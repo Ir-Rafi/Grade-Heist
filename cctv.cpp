@@ -77,14 +77,14 @@ public:
         disclaimerText.setPosition(50, 200);
         std::string disclaimer = "THINK TWICE BEFORE CLICKING ANY SWITCH!\n\n"
                                "• You can choose ONLY ONE room\n"
-                               "• You can select ONLY ONE option per room\n"
+                               "• You can select ONLY ONE option\n"
+                               "• You got the room number from previous task"
                                "• Choose carefully - wrong choice means FAILURE!\n\n"
-                               "Mission: Freeze Rana Sir's room CCTV to avoid detection\n"
-                               "Rana Sir's Room: 405\n\n"
-                               "Remember: If you turn off the wrong CCTV or choose\n"
-                               "the wrong room, you'll be caught!";
+                               //"Mission: Freeze Rana Sir's room CCTV to avoid detection\n"
+                              // "Rana Sir's Room: 405\n\n"
+                               "Remember: If you  choose the wrong room or wrong option, you would might get caught!";
+                               "REmemeber: Sir has the access of his room's CCTV and He is keeping his eye on it 24/7";
         disclaimerText.setString(disclaimer);
-        
         continueButton.setSize(sf::Vector2f(200, 50));
         continueButton.setPosition(400, 550);
         continueButton.setFillColor(sf::Color::Green);

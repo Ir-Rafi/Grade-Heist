@@ -1,203 +1,318 @@
 #include <SFML/Graphics.hpp>
-#include <iostream>
-#include <string>
+#include <SFML/System.hpp>
+#include <iomanip>
+#include <sstream>
+#include <vector>
+#include<cmath>
 
-class PrinterSabotage {
-private:
-    sf::RenderWindow window;
-    sf::Texture printerTexture;
-    sf::Sprite printerSprite;
-    sf::Font font;
-    
-    // Game state
-    bool switchPressed;
-    bool taskCompleted;
-    float inkProgress;
-    float inkSpeed;
-    
-    // UI elements
-    sf::RectangleShape switchButton;
-    sf::RectangleShape progressBarBg;
-    sf::RectangleShape progressBarFill;
-    sf::Text statusText;
-    sf::Text instructionText;
-    sf::Text switchText;
-    
-    // Screen overlay for printer display
-    sf::RectangleShape printerScreen;
-    sf::Text printerDisplayText;
-    
-public:
-    PrinterSabotage() : window(sf::VideoMode(800, 600), "Printer Sabotage Task"),
-                        switchPressed(false), taskCompleted(false), 
-                        inkProgress(0.0f), inkSpeed(50.0f) {
-        
-        // Load printer texture
-        if (!printerTexture.loadFromFile("printer.png")) {
-            std::cout << "Error loading printer.png" << std::endl;
-        }
-        printerSprite.setTexture(printerTexture);
-        
-        // Scale and position printer
-        float scaleX = 400.0f / printerTexture.getSize().x;
-        float scaleY = 300.0f / printerTexture.getSize().y;
-        printerSprite.setScale(scaleX, scaleY);
-        printerSprite.setPosition(200, 50);
-        
-        // Load font
-        if (!font.loadFromFile("arial.ttf")) {
-            std::cout << "Error loading arial.ttf" << std::endl;
-        }
-        
-        setupUI();
-    }
-    
-    void setupUI() {
-        // Switch button
-        switchButton.setSize(sf::Vector2f(80, 40));
-        switchButton.setPosition(100, 400);
-        switchButton.setFillColor(sf::Color::Red);
-        
-        // Progress bar background
-        progressBarBg.setSize(sf::Vector2f(300, 20));
-        progressBarBg.setPosition(250, 450);
-        progressBarBg.setFillColor(sf::Color(50, 50, 50));
-        progressBarBg.setOutlineThickness(2);
-        progressBarBg.setOutlineColor(sf::Color::White);
-        
-        // Progress bar fill
-        progressBarFill.setSize(sf::Vector2f(0, 20));
-        progressBarFill.setPosition(250, 450);
-        progressBarFill.setFillColor(sf::Color::Blue);
-        
-        // Printer screen overlay (where error message appears)
-        printerScreen.setSize(sf::Vector2f(200, 80));
-        printerScreen.setPosition(300, 120);
-        printerScreen.setFillColor(sf::Color::Black);
-        printerScreen.setOutlineThickness(2);
-        printerScreen.setOutlineColor(sf::Color(100, 100, 100));
-        
-        // Text elements
-        statusText.setFont(font);
-        statusText.setCharacterSize(24);
-        statusText.setFillColor(sf::Color::White);
-        statusText.setPosition(50, 50);
-        statusText.setString("Sabotage the Printer");
-        
-        instructionText.setFont(font);
-        instructionText.setCharacterSize(16);
-        instructionText.setFillColor(sf::Color::Yellow);
-        instructionText.setPosition(50, 500);
-        instructionText.setString("Click the switch to void the ink tube");
-        
-        switchText.setFont(font);
-        switchText.setCharacterSize(14);
-        switchText.setFillColor(sf::Color::White);
-        switchText.setPosition(105, 410);
-        switchText.setString("SWITCH");
-        
-        printerDisplayText.setFont(font);
-        printerDisplayText.setCharacterSize(16);
-        printerDisplayText.setFillColor(sf::Color::Red);
-        printerDisplayText.setPosition(310, 140);
-    }
-    
-    void handleEvents() {
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                window.close();
-            }
-            
-            if (event.type == sf::Event::MouseButtonPressed) {
-                sf::Vector2i mousePos = sf::Mouse::getPosition(window);
-                
-                // Check if switch was clicked
-                if (switchButton.getGlobalBounds().contains(mousePos.x, mousePos.y) && !taskCompleted) {
-                    switchPressed = true;
-                    switchButton.setFillColor(sf::Color::Green);
-                    instructionText.setString("Ink is draining...");
-                }
-            }
-        }
-    }
-    
-    void update(float deltaTime) {
-        if (switchPressed && !taskCompleted) {
-            // Increase ink drainage progress
-            inkProgress += inkSpeed * deltaTime;
-            
-            // Update progress bar
-            float progressWidth = (inkProgress / 100.0f) * 300.0f;
-            progressBarFill.setSize(sf::Vector2f(progressWidth, 20));
-            
-            // Change progress bar color as it fills
-            if (inkProgress < 30) {
-                progressBarFill.setFillColor(sf::Color::Blue);
-            } else if (inkProgress < 70) {
-                progressBarFill.setFillColor(sf::Color::Yellow);
-            } else {
-                progressBarFill.setFillColor(sf::Color::Red);
-            }
-            
-            // Check if task is completed
-            if (inkProgress >= 100.0f) {
-                taskCompleted = true;
-                instructionText.setString("Printer sabotaged successfully!");
-                instructionText.setFillColor(sf::Color::Green);
-                printerDisplayText.setString("Printer Is\nNot Working");
-                
-                // Make printer screen flash red to indicate error
-                printerScreen.setFillColor(sf::Color(80, 0, 0));
-            }
-        }
-    }
-    
-    void render() {
-        window.clear(sf::Color(20, 20, 30));
-        
-        // Draw printer
-        window.draw(printerSprite);
-        
-        // Draw printer screen
-        window.draw(printerScreen);
-        if (taskCompleted) {
-            window.draw(printerDisplayText);
-        }
-        
-        // Draw UI elements
-        window.draw(switchButton);
-        window.draw(progressBarBg);
-        window.draw(progressBarFill);
-        
-        // Draw text
-        window.draw(statusText);
-        window.draw(instructionText);
-        window.draw(switchText);
-        
-        window.display();
-    }
-    
-    void run() {
-        sf::Clock clock;
-        
-        while (window.isOpen()) {
-            float deltaTime = clock.restart().asSeconds();
-            
-            handleEvents();
-            update(deltaTime);
-            render();
-        }
-    }
-    
-    bool isTaskCompleted() const {
-        return taskCompleted;
-    }
+enum class TaskState {
+    WaitingForInsert,
+    Printing,
+    WaitingForRemove,
+    Failure,
+    Success,
+    TaskCompleted
+};
+
+struct Page {
+    sf::RectangleShape shape;
+    bool isInCopier;
+    bool isProcessed;
+    sf::Vector2f originalPosition;
+    int pageNumber;
 };
 
 int main() {
-    PrinterSabotage game;
-    game.run();
+    sf::RenderWindow window({1000, 700}, "Advanced Photocopier Task - 3 Pages");
+    window.setFramerateLimit(60);
+
+    // Load font
+    sf::Font font;
+    if (!font.loadFromFile("arial.ttf")) {
+        // Handle font loading failure
+        return -1;
+    }
+
+    // Create copier as a rectangle shape
+    sf::RectangleShape copier({200, 150});
+    copier.setFillColor(sf::Color(100, 100, 100));
+    copier.setOutlineColor(sf::Color(150, 150, 150));
+    copier.setOutlineThickness(3);
+    copier.setPosition(400, 250);
+
+    // Create copier slot (darker rectangle inside)
+    sf::RectangleShape copierSlot({160, 110});
+    copierSlot.setFillColor(sf::Color(50, 50, 50));
+    copierSlot.setPosition(420, 270);
+
+    // Create 3 pages as rectangle shapes
+    std::vector<Page> pages(3);
+    sf::Vector2f startPositions[3] = {
+        {50, 450},   // Page 1
+        {150, 450},  // Page 2  
+        {250, 450}   // Page 3
+    };
     
+    for (int i = 0; i < 3; i++) {
+        pages[i].shape.setSize({80, 100});
+        pages[i].shape.setPosition(startPositions[i]);
+        pages[i].originalPosition = startPositions[i];
+        pages[i].isInCopier = false;
+        pages[i].isProcessed = false;
+        pages[i].pageNumber = i + 1;
+        
+        // Color pages differently for visual distinction
+        sf::Color pageColors[3] = {
+            sf::Color::White, 
+            sf::Color(255, 255, 200), 
+            sf::Color(200, 255, 200)
+        };
+        pages[i].shape.setFillColor(pageColors[i]);
+        pages[i].shape.setOutlineColor(sf::Color::Black);
+        pages[i].shape.setOutlineThickness(2);
+    }
+
+    // Progress bar frame
+    sf::RectangleShape barFrame({220, 26});
+    barFrame.setFillColor(sf::Color::Transparent);
+    barFrame.setOutlineColor(sf::Color(200,200,200));
+    barFrame.setOutlineThickness(2);
+    barFrame.setPosition(390, 450);
+
+    // Progress fill
+    sf::RectangleShape barFill({0, 22});
+    barFill.setFillColor(sf::Color(100,250,100));
+    barFill.setPosition(barFrame.getPosition() + sf::Vector2f(2,2));
+
+    // Instruction text
+    sf::Text instr("", font, 20);
+    instr.setFillColor(sf::Color::White);
+    instr.setPosition(300, 150);
+
+    // Timer text
+    sf::Text timerText("", font, 18);
+    timerText.setFillColor(sf::Color::White);
+    timerText.setPosition(620, 450);
+
+    // Page counter text
+    sf::Text pageCountText("", font, 18);
+    pageCountText.setFillColor(sf::Color::Cyan);
+    pageCountText.setPosition(50, 50);
+
+    // Task completion text
+    sf::Text completionText("TASK COMPLETED!", font, 48);
+    completionText.setFillColor(sf::Color::Green);
+    completionText.setPosition(300, 300);
+
+    // Page labels
+    std::vector<sf::Text> pageLabels(3);
+    for (int i = 0; i < 3; i++) {
+        pageLabels[i].setFont(font);
+        pageLabels[i].setString("Page " + std::to_string(i + 1));
+        pageLabels[i].setCharacterSize(14);
+        pageLabels[i].setFillColor(sf::Color::White);
+        pageLabels[i].setPosition(startPositions[i].x, startPositions[i].y - 25);
+    }
+
+    // Copier label
+    sf::Text copierLabel("COPIER", font, 16);
+    copierLabel.setFillColor(sf::Color::White);
+    copierLabel.setPosition(450, 220);
+
+    TaskState state = TaskState::WaitingForInsert;
+    int draggedPageIndex = -1;
+    int currentPageInCopier = -1;
+    int pagesProcessed = 0;
+    sf::Clock printClock;
+    sf::Clock completionClock;
+
+    while (window.isOpen()) {
+        // --- Event Handling ---
+        sf::Event ev;
+        while (window.pollEvent(ev)) {
+            if (ev.type == sf::Event::Closed)
+                window.close();
+
+            if (ev.type == sf::Event::MouseButtonPressed && ev.mouseButton.button == sf::Mouse::Left) {
+                sf::Vector2f mpos(ev.mouseButton.x, ev.mouseButton.y);
+
+                if (state == TaskState::WaitingForInsert) {
+                    // Check if clicking on any unprocessed page
+                    for (int i = 0; i < 3; i++) {
+                        if (!pages[i].isProcessed && !pages[i].isInCopier && 
+                            pages[i].shape.getGlobalBounds().contains(mpos)) {
+                            draggedPageIndex = i;
+                            break;
+                        }
+                    }
+                }
+                else if (state == TaskState::WaitingForRemove && currentPageInCopier != -1) {
+                    // Remove current page from copier
+                    pages[currentPageInCopier].isInCopier = false;
+                    pages[currentPageInCopier].isProcessed = true;
+                    pages[currentPageInCopier].shape.setPosition(700 + pagesProcessed * 100, 450); // Move to "completed" area
+                    currentPageInCopier = -1;
+                    pagesProcessed++;
+                    
+                    if (pagesProcessed >= 3) {
+                        state = TaskState::TaskCompleted;
+                        completionClock.restart();
+                    } else {
+                        state = TaskState::WaitingForInsert;
+                    }
+                }
+                else if (state == TaskState::Failure) {
+                    // Reset current page
+                    if (currentPageInCopier != -1) {
+                        pages[currentPageInCopier].shape.setPosition(pages[currentPageInCopier].originalPosition);
+                        pages[currentPageInCopier].isInCopier = false;
+                        currentPageInCopier = -1;
+                    }
+                    state = TaskState::WaitingForInsert;
+                }
+            }
+            
+            if (ev.type == sf::Event::MouseButtonReleased && ev.mouseButton.button == sf::Mouse::Left) {
+                if (draggedPageIndex != -1) {
+                    // Check if dropped on copier slot
+                    if (state == TaskState::WaitingForInsert &&
+                        copierSlot.getGlobalBounds().intersects(pages[draggedPageIndex].shape.getGlobalBounds())) {
+                        
+                        // Snap to copier slot center
+                        sf::Vector2f slotCenter = copierSlot.getPosition() + sf::Vector2f(
+                            copierSlot.getSize().x / 2 - pages[draggedPageIndex].shape.getSize().x / 2,
+                            copierSlot.getSize().y / 2 - pages[draggedPageIndex].shape.getSize().y / 2
+                        );
+                        pages[draggedPageIndex].shape.setPosition(slotCenter);
+                        
+                        pages[draggedPageIndex].isInCopier = true;
+                        currentPageInCopier = draggedPageIndex;
+                        state = TaskState::Printing;
+                        printClock.restart();
+                    } else {
+                        // Return to original position
+                        pages[draggedPageIndex].shape.setPosition(pages[draggedPageIndex].originalPosition);
+                    }
+                    draggedPageIndex = -1;
+                }
+            }
+        }
+
+        // --- Dragging Logic ---
+        if (draggedPageIndex != -1) {
+            auto m = sf::Mouse::getPosition(window);
+            pages[draggedPageIndex].shape.setPosition(
+                m.x - pages[draggedPageIndex].shape.getSize().x/2,
+                m.y - pages[draggedPageIndex].shape.getSize().y/2
+            );
+        }
+
+        // --- State Updates & UI Text ---
+        switch (state) {
+        case TaskState::WaitingForInsert:
+            instr.setString("Drag pages into copier slot (Pages processed: " + std::to_string(pagesProcessed) + "/3)");
+            barFill.setSize({0,22});
+            timerText.setString("");
+            break;
+
+        case TaskState::Printing: {
+            instr.setString("Printing Page " + std::to_string(pages[currentPageInCopier].pageNumber) + "... hold steady");
+            float t = printClock.getElapsedTime().asSeconds();
+            float pct = std::min(t/3.f, 1.f);  // 3 seconds print time
+            barFill.setSize({(barFrame.getSize().x-4)*pct, 22});
+
+            // Show countdown
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(1) << (3.f - std::min(t,3.f)) << "s";
+            timerText.setString(ss.str());
+
+            if (pct >= 1.f) {
+                state = TaskState::WaitingForRemove;
+            }
+            break;
+        }
+
+        case TaskState::WaitingForRemove:
+            instr.setString("Click to retrieve Page " + std::to_string(pages[currentPageInCopier].pageNumber));
+            break;
+
+        case TaskState::Failure:
+            instr.setString("Too soon! Resetting page...");
+            timerText.setString("");
+            break;
+
+        case TaskState::Success:
+            instr.setString("Page completed! Continue with remaining pages");
+            timerText.setString("");
+            break;
+            
+        case TaskState::TaskCompleted:
+            instr.setString("All pages processed successfully!");
+            timerText.setString("");
+            // Auto-close after 3 seconds
+            if (completionClock.getElapsedTime().asSeconds() > 3.0f) {
+                window.close();
+            }
+            break;
+        }
+
+        // Update page counter
+        pageCountText.setString("Pages Completed: " + std::to_string(pagesProcessed) + "/3");
+
+        // --- Rendering ---
+        window.clear(sf::Color::Black);
+
+        // Draw copier and slot
+        window.draw(copier);
+        window.draw(copierSlot);
+        window.draw(copierLabel);
+
+        // Draw all pages
+        for (int i = 0; i < 3; i++) {
+            if (!pages[i].isProcessed || pages[i].isInCopier) {
+                window.draw(pages[i].shape);
+            }
+        }
+
+        // Draw processed pages in completion area
+        for (int i = 0; i < 3; i++) {
+            if (pages[i].isProcessed && !pages[i].isInCopier) {
+                window.draw(pages[i].shape);
+            }
+        }
+
+        // Draw UI elements
+        window.draw(barFrame);
+        window.draw(barFill);
+        window.draw(instr);
+        window.draw(timerText);
+        window.draw(pageCountText);
+
+        // Draw page labels for unprocessed pages
+        for (int i = 0; i < 3; i++) {
+            if (!pages[i].isProcessed && !pages[i].isInCopier) {
+                window.draw(pageLabels[i]);
+            }
+        }
+
+        // Draw completion text
+        if (state == TaskState::TaskCompleted) {
+            // Add pulsing effect
+            float pulse = std::sin(completionClock.getElapsedTime().asSeconds() * 4) * 0.3f + 0.7f;
+            completionText.setFillColor(sf::Color(0, 255 * pulse, 0));
+            window.draw(completionText);
+        }
+
+        // Draw "Completed Pages" label
+        if (pagesProcessed > 0) {
+            sf::Text completedLabel("Completed Pages:", font, 16);
+            completedLabel.setFillColor(sf::Color::Green);
+            completedLabel.setPosition(650, 420);
+            window.draw(completedLabel);
+        }
+
+        window.display();
+    }
+
     return 0;
 }
