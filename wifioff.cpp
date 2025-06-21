@@ -1,277 +1,374 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <string>
+#include <cctype>
 #include <sstream>
-#include <iomanip>
 
-class WifiOffTask {
+class GradeChangerSystem {
 private:
     sf::RenderWindow window;
     sf::Font font;
     
-    // Game state
-    bool wifiOn;
-    bool taskCompleted;
-    bool taskFailed;
-    float timeRemaining;
-    const float TASK_TIME_LIMIT = 30.0f;
+    // Login phase elements
+    sf::Text loginTitleText, usernameLabel, passwordLabel;
+    sf::RectangleShape usernameBox, passwordBox, loginButton;
+    sf::Text usernameText, passwordText, loginButtonText, loginResultText;
+    std::string loginUsername, loginPassword;
+    bool usernameActive, passwordActive;
+    bool loginSuccess;
     
-    // UI elements
-    sf::RectangleShape wifiScreen;
-    sf::Text wifiStatusText;
-    sf::RectangleShape switchButton;
-    sf::Text switchText;
-    sf::Text timerText;
-    sf::Text instructionText;
-    sf::Text taskTitleText;
-    sf::Text resultText;
+    // Grade change phase elements
+    sf::Text gradeTitleText, nameLabel, gradeLabel;
+    sf::RectangleShape nameBox, gradeBox, submitButton;
+    sf::Text nameText, gradeText, submitButtonText, submitResultText;
+    std::string studentName, studentGrade;
+    bool nameActive, gradeActive;
+    bool gradeChanged;
     
-    // Visual effects
-    sf::CircleShape wifiIndicator;
-    sf::RectangleShape urgencyOverlay;
-    float blinkTimer;
+    // Auto-close functionality
+    sf::Clock closeClock;
+    bool shouldClose;
+    float closeDelay;
+    
+    enum Phase { LOGIN_PHASE, GRADE_PHASE };
+    Phase currentPhase;
     
 public:
-    WifiOffTask() : window(sf::VideoMode(800, 600), "Wifi-Off Sabotage Task"),
-                    wifiOn(true), taskCompleted(false), taskFailed(false),
-                    timeRemaining(TASK_TIME_LIMIT), blinkTimer(0.0f) {
+    GradeChangerSystem() : window(sf::VideoMode(600, 500), "Grade Changer System"),
+                          usernameActive(false), passwordActive(false), loginSuccess(false),
+                          nameActive(false), gradeActive(false), gradeChanged(false),
+                          shouldClose(false), closeDelay(2.0f),
+                          currentPhase(LOGIN_PHASE) {
         
-        // Load font
         if (!font.loadFromFile("arial.ttf")) {
-            std::cout << "Error loading arial.ttf" << std::endl;
+            std::cout << "Warning: Could not load font file. Using default font." << std::endl;
         }
         
-        setupUI();
+        setupLoginUI();
+        setupGradeUI();
     }
     
-    void setupUI() {
-        // Wifi screen (monitor display)
-        wifiScreen.setSize(sf::Vector2f(400, 150));
-        wifiScreen.setPosition(200, 150);
-        wifiScreen.setFillColor(sf::Color::Black);
-        wifiScreen.setOutlineThickness(5);
-        wifiScreen.setOutlineColor(sf::Color(100, 100, 100));
+    void setupLoginUI() {
+        // Login title
+        loginTitleText.setFont(font);
+        loginTitleText.setString("Admin Login");
+        loginTitleText.setCharacterSize(28);
+        loginTitleText.setFillColor(sf::Color::White);
+        loginTitleText.setPosition(200, 30);
         
-        // Wifi status text on screen
-        wifiStatusText.setFont(font);
-        wifiStatusText.setCharacterSize(32);
-        wifiStatusText.setFillColor(sf::Color::Green);
-        wifiStatusText.setPosition(280, 200);
-        wifiStatusText.setString("Wifi Is On");
+        // Username label and box
+        usernameLabel.setFont(font);
+        usernameLabel.setString("Username:");
+        usernameLabel.setCharacterSize(18);
+        usernameLabel.setFillColor(sf::Color::Yellow);
+        usernameLabel.setPosition(50, 100);
         
-        // Switch button
-        switchButton.setSize(sf::Vector2f(120, 60));
-        switchButton.setPosition(340, 350);
-        switchButton.setFillColor(sf::Color::Red);
-        switchButton.setOutlineThickness(3);
-        switchButton.setOutlineColor(sf::Color::White);
+        usernameBox.setSize(sf::Vector2f(300, 40));
+        usernameBox.setFillColor(sf::Color::White);
+        usernameBox.setOutlineThickness(2);
+        usernameBox.setOutlineColor(sf::Color::Blue);
+        usernameBox.setPosition(50, 130);
         
-        // Switch label
-        switchText.setFont(font);
-        switchText.setCharacterSize(16);
-        switchText.setFillColor(sf::Color::White);
-        switchText.setPosition(365, 375);
-        switchText.setString("SWITCH");
+        usernameText.setFont(font);
+        usernameText.setCharacterSize(16);
+        usernameText.setFillColor(sf::Color::Black);
+        usernameText.setPosition(55, 140);
         
-        // Timer display
-        timerText.setFont(font);
-        timerText.setCharacterSize(24);
-        timerText.setFillColor(sf::Color::Yellow);
-        timerText.setPosition(50, 50);
+        // Password label and box
+        passwordLabel.setFont(font);
+        passwordLabel.setString("Password:");
+        passwordLabel.setCharacterSize(18);
+        passwordLabel.setFillColor(sf::Color::Yellow);
+        passwordLabel.setPosition(50, 190);
         
-        // Task title
-        taskTitleText.setFont(font);
-        taskTitleText.setCharacterSize(28);
-        taskTitleText.setFillColor(sf::Color::White);
-        taskTitleText.setPosition(250, 50);
-        taskTitleText.setString("SABOTAGE: Turn Off Wifi");
+        passwordBox.setSize(sf::Vector2f(300, 40));
+        passwordBox.setFillColor(sf::Color::White);
+        passwordBox.setOutlineThickness(2);
+        passwordBox.setOutlineColor(sf::Color::Blue);
+        passwordBox.setPosition(50, 220);
         
-        // Instructions
-        instructionText.setFont(font);
-        instructionText.setCharacterSize(18);
-        instructionText.setFillColor(sf::Color::Cyan);
-        instructionText.setPosition(200, 450);
-        instructionText.setString("Click the switch to turn off the wifi!");
+        passwordText.setFont(font);
+        passwordText.setCharacterSize(16);
+        passwordText.setFillColor(sf::Color::Black);
+        passwordText.setPosition(55, 230);
         
-        // Result text
-        resultText.setFont(font);
-        resultText.setCharacterSize(24);
-        resultText.setFillColor(sf::Color::Green);
-        resultText.setPosition(250, 500);
+        // Login button
+        loginButton.setSize(sf::Vector2f(100, 40));
+        loginButton.setFillColor(sf::Color::Green);
+        loginButton.setOutlineThickness(2);
+        loginButton.setOutlineColor(sf::Color::White);
+        loginButton.setPosition(50, 280);
         
-        // Wifi indicator light
-        wifiIndicator.setRadius(15);
-        wifiIndicator.setPosition(620, 200);
-        wifiIndicator.setFillColor(sf::Color::Green);
+        loginButtonText.setFont(font);
+        loginButtonText.setString("Login");
+        loginButtonText.setCharacterSize(16);
+        loginButtonText.setFillColor(sf::Color::White);
+        loginButtonText.setPosition(75, 295);
         
-        // Urgency overlay for time pressure
-        urgencyOverlay.setSize(sf::Vector2f(800, 600));
-        urgencyOverlay.setPosition(0, 0);
-        urgencyOverlay.setFillColor(sf::Color(255, 0, 0, 0)); // Transparent red
+        // Login result text
+        loginResultText.setFont(font);
+        loginResultText.setCharacterSize(18);
+        loginResultText.setFillColor(sf::Color::Red);
+        loginResultText.setPosition(50, 340);
     }
     
-    void handleEvents() {
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                window.close();
+    void setupGradeUI() {
+        // Grade change title
+        gradeTitleText.setFont(font);
+        gradeTitleText.setString("Grade Changer");
+        gradeTitleText.setCharacterSize(28);
+        gradeTitleText.setFillColor(sf::Color::White);
+        gradeTitleText.setPosition(180, 30);
+        
+        // Name label and box
+        nameLabel.setFont(font);
+        nameLabel.setString("Student Name:");
+        nameLabel.setCharacterSize(18);
+        nameLabel.setFillColor(sf::Color::Yellow);
+        nameLabel.setPosition(50, 100);
+        
+        nameBox.setSize(sf::Vector2f(300, 40));
+        nameBox.setFillColor(sf::Color::White);
+        nameBox.setOutlineThickness(2);
+        nameBox.setOutlineColor(sf::Color::Blue);
+        nameBox.setPosition(50, 130);
+        
+        nameText.setFont(font);
+        nameText.setCharacterSize(16);
+        nameText.setFillColor(sf::Color::Black);
+        nameText.setPosition(55, 140);
+        
+        // Grade label and box
+        gradeLabel.setFont(font);
+        gradeLabel.setString("Grade:");
+        gradeLabel.setCharacterSize(18);
+        gradeLabel.setFillColor(sf::Color::Yellow);
+        gradeLabel.setPosition(50, 190);
+        
+        gradeBox.setSize(sf::Vector2f(300, 40));
+        gradeBox.setFillColor(sf::Color::White);
+        gradeBox.setOutlineThickness(2);
+        gradeBox.setOutlineColor(sf::Color::Blue);
+        gradeBox.setPosition(50, 220);
+        
+        gradeText.setFont(font);
+        gradeText.setCharacterSize(16);
+        gradeText.setFillColor(sf::Color::Black);
+        gradeText.setPosition(55, 230);
+        
+        // Submit button
+        submitButton.setSize(sf::Vector2f(100, 40));
+        submitButton.setFillColor(sf::Color::Green);
+        submitButton.setOutlineThickness(2);
+        submitButton.setOutlineColor(sf::Color::White);
+        submitButton.setPosition(50, 280);
+        
+        submitButtonText.setFont(font);
+        submitButtonText.setString("Submit");
+        submitButtonText.setCharacterSize(16);
+        submitButtonText.setFillColor(sf::Color::White);
+        submitButtonText.setPosition(70, 295);
+        
+        // Submit result text
+        submitResultText.setFont(font);
+        submitResultText.setCharacterSize(20);
+        submitResultText.setFillColor(sf::Color::Green);
+        submitResultText.setPosition(50, 340);
+    }
+    
+    void handleLoginTextInput(char c) {
+        if (c == '\b') { // Backspace
+            if (usernameActive && !loginUsername.empty()) {
+                loginUsername.pop_back();
+            } else if (passwordActive && !loginPassword.empty()) {
+                loginPassword.pop_back();
             }
-            
-            if (event.type == sf::Event::MouseButtonPressed && !taskCompleted && !taskFailed) {
-                sf::Vector2i mousePos = sf::Mouse::getPosition(window);
-                
-                // Check if switch was clicked
-                if (switchButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
-                    toggleWifi();
+        } else if (c == '\t') { // Tab to switch fields
+            usernameActive = !usernameActive;
+            passwordActive = !passwordActive;
+        } else if (std::isprint(c)) {
+            if (usernameActive && loginUsername.length() < 20) {
+                loginUsername += c;
+            } else if (passwordActive && loginPassword.length() < 20) {
+                loginPassword += c;
+            }
+        }
+        
+        usernameText.setString(loginUsername);
+        passwordText.setString(std::string(loginPassword.length(), '*')); // Show asterisks for password
+        
+        // Update box colors based on active state
+        usernameBox.setOutlineColor(usernameActive ? sf::Color::Green : sf::Color::Blue);
+        passwordBox.setOutlineColor(passwordActive ? sf::Color::Green : sf::Color::Blue);
+    }
+    
+    void handleGradeTextInput(char c) {
+        if (c == '\b') { // Backspace
+            if (nameActive && !studentName.empty()) {
+                studentName.pop_back();
+            } else if (gradeActive && !studentGrade.empty()) {
+                studentGrade.pop_back();
+            }
+        } else if (c == '\t') { // Tab to switch fields
+            nameActive = !nameActive;
+            gradeActive = !gradeActive;
+        } else if (std::isprint(c)) {
+            if (nameActive && studentName.length() < 30) {
+                studentName += c;
+            } else if (gradeActive && studentGrade.length() < 10) {
+                // Allow digits, decimal point, and letters for grades like "A+", "95.5", etc.
+                if (std::isdigit(c) || c == '.' || std::isalpha(c) || c == '+' || c == '-') {
+                    studentGrade += c;
                 }
             }
-            
-            // Restart task with R key
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R) {
-                resetTask();
-            }
+        }
+        
+        nameText.setString(studentName);
+        gradeText.setString(studentGrade);
+        
+        // Update box colors based on active state
+        nameBox.setOutlineColor(nameActive ? sf::Color::Green : sf::Color::Blue);
+        gradeBox.setOutlineColor(gradeActive ? sf::Color::Green : sf::Color::Blue);
+    }
+    
+    void handleLoginMouseClick(sf::Vector2i mousePos) {
+        // Check username box click
+        if (usernameBox.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
+            usernameActive = true;
+            passwordActive = false;
+        }
+        // Check password box click
+        else if (passwordBox.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
+            usernameActive = false;
+            passwordActive = true;
+        }
+        // Check login button click
+        else if (loginButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
+            checkLogin();
         }
     }
     
-    void toggleWifi() {
-        if (wifiOn) {
-            // Turn off wifi - complete the task
-            wifiOn = false;
-            taskCompleted = true;
-            
-            // Update UI
-            wifiStatusText.setString("Wifi Is Off");
-            wifiStatusText.setFillColor(sf::Color::Red);
-            switchButton.setFillColor(sf::Color::Green);
-            wifiIndicator.setFillColor(sf::Color::Red);
-            instructionText.setString("Mission accomplished! Grades blocked!");
-            instructionText.setFillColor(sf::Color::Green);
-            resultText.setString("SUCCESS: Wifi turned off!");
-            resultText.setFillColor(sf::Color::Green);
+    void handleGradeMouseClick(sf::Vector2i mousePos) {
+        // Check name box click
+        if (nameBox.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
+            nameActive = true;
+            gradeActive = false;
+        }
+        // Check grade box click
+        else if (gradeBox.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
+            nameActive = false;
+            gradeActive = true;
+        }
+        // Check submit button click
+        else if (submitButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
+            submitGradeChange();
         }
     }
     
-    void update(float deltaTime) {
-        if (!taskCompleted && !taskFailed) {
-            // Update timer
-            timeRemaining -= deltaTime;
-            
-            // Update timer display
-            std::stringstream ss;
-            ss << "Time: " << std::fixed << std::setprecision(1) << timeRemaining << "s";
-            timerText.setString(ss.str());
-            
-            // Change timer color based on remaining time
-            if (timeRemaining <= 10.0f) {
-                timerText.setFillColor(sf::Color::Red);
-                
-                // Add urgency effect
-                blinkTimer += deltaTime;
-                if (blinkTimer >= 0.5f) {
-                    blinkTimer = 0.0f;
-                }
-                
-                // Red overlay that blinks when time is running out
-                int alpha = static_cast<int>(30 + 25 * sin(blinkTimer * 12.0f));
-                urgencyOverlay.setFillColor(sf::Color(255, 0, 0, alpha));
-            } else if (timeRemaining <= 20.0f) {
-                timerText.setFillColor(sf::Color::Yellow);
-            }
-            
-            // Check if time ran out
-            if (timeRemaining <= 0.0f) {
-                taskFailed = true;
-                instructionText.setString("Time's up! Sir submitted the grades!");
-                instructionText.setFillColor(sf::Color::Red);
-                resultText.setString("FAILED: Too slow!");
-                resultText.setFillColor(sf::Color::Red);
-                timerText.setString("Time: 0.0s");
-            }
+    void checkLogin() {
+        if (loginUsername == "Admin" && loginPassword == "924689093745") {
+            loginSuccess = true;
+            currentPhase = GRADE_PHASE;
+            loginResultText.setString("Login Successful!");
+            loginResultText.setFillColor(sf::Color::Green);
+        } else {
+            loginResultText.setString("Invalid credentials!");
+            loginResultText.setFillColor(sf::Color::Red);
         }
     }
     
-    void resetTask() {
-        wifiOn = true;
-        taskCompleted = false;
-        taskFailed = false;
-        timeRemaining = TASK_TIME_LIMIT;
-        blinkTimer = 0.0f;
-        
-        // Reset UI
-        wifiStatusText.setString("Wifi Is On");
-        wifiStatusText.setFillColor(sf::Color::Green);
-        switchButton.setFillColor(sf::Color::Red);
-        wifiIndicator.setFillColor(sf::Color::Green);
-        instructionText.setString("Click the switch to turn off the wifi!");
-        instructionText.setFillColor(sf::Color::Cyan);
-        resultText.setString("");
-        timerText.setFillColor(sf::Color::Yellow);
-        urgencyOverlay.setFillColor(sf::Color(255, 0, 0, 0));
-    }
-    
-    void render() {
-        window.clear(sf::Color(20, 20, 30));
-        
-        // Draw wifi screen
-        window.draw(wifiScreen);
-        window.draw(wifiStatusText);
-        
-        // Draw switch
-        window.draw(switchButton);
-        window.draw(switchText);
-        
-        // Draw wifi indicator
-        window.draw(wifiIndicator);
-        
-        // Draw UI text
-        window.draw(taskTitleText);
-        window.draw(timerText);
-        window.draw(instructionText);
-        window.draw(resultText);
-        
-        // Draw urgency overlay (when time is running out)
-        if (timeRemaining <= 10.0f && !taskCompleted && !taskFailed) {
-            window.draw(urgencyOverlay);
+    void submitGradeChange() {
+        if (!studentName.empty() && !studentGrade.empty()) {
+            gradeChanged = true;
+            submitResultText.setString("Grade Changed - Closing in 2 seconds...");
+            submitResultText.setFillColor(sf::Color::Green);
+            shouldClose = true;
+            closeClock.restart();
+        } else {
+            submitResultText.setString("Please fill both fields!");
+            submitResultText.setFillColor(sf::Color::Red);
         }
-        
-        // Draw restart instruction
-        if (taskCompleted || taskFailed) {
-            sf::Text restartText;
-            restartText.setFont(font);
-            restartText.setCharacterSize(16);
-            restartText.setFillColor(sf::Color::White);
-            restartText.setPosition(300, 550);
-            restartText.setString("Press R to restart");
-            window.draw(restartText);
-        }
-        
-        window.display();
     }
     
     void run() {
-        sf::Clock clock;
-        
         while (window.isOpen()) {
-            float deltaTime = clock.restart().asSeconds();
+            // Check if we should close the window after displaying grade changed message
+            if (shouldClose && closeClock.getElapsedTime().asSeconds() >= closeDelay) {
+                window.close();
+                break;
+            }
             
-            handleEvents();
-            update(deltaTime);
-            render();
+            sf::Event event;
+            while (window.pollEvent(event)) {
+                if (event.type == sf::Event::Closed) {
+                    window.close();
+                }
+                
+                if (event.type == sf::Event::TextEntered) {
+                    if (currentPhase == LOGIN_PHASE) {
+                        handleLoginTextInput(static_cast<char>(event.text.unicode));
+                    } else if (currentPhase == GRADE_PHASE && !shouldClose) {
+                        handleGradeTextInput(static_cast<char>(event.text.unicode));
+                    }
+                }
+                
+                if (event.type == sf::Event::MouseButtonPressed) {
+                    if (event.mouseButton.button == sf::Mouse::Left) {
+                        sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+                        if (currentPhase == LOGIN_PHASE) {
+                            handleLoginMouseClick(mousePos);
+                        } else if (currentPhase == GRADE_PHASE && !shouldClose) {
+                            handleGradeMouseClick(mousePos);
+                        }
+                    }
+                }
+                
+                if (event.type == sf::Event::KeyPressed) {
+                    if (event.key.code == sf::Keyboard::Enter) {
+                        if (currentPhase == LOGIN_PHASE) {
+                            checkLogin();
+                        } else if (currentPhase == GRADE_PHASE && !shouldClose) {
+                            submitGradeChange();
+                        }
+                    }
+                }
+            }
+            
+            window.clear(sf::Color::Black);
+            
+            if (currentPhase == LOGIN_PHASE) {
+                // Draw login UI
+                window.draw(loginTitleText);
+                window.draw(usernameLabel);
+                window.draw(usernameBox);
+                window.draw(usernameText);
+                window.draw(passwordLabel);
+                window.draw(passwordBox);
+                window.draw(passwordText);
+                window.draw(loginButton);
+                window.draw(loginButtonText);
+                window.draw(loginResultText);
+            } else if (currentPhase == GRADE_PHASE) {
+                // Draw grade change UI
+                window.draw(gradeTitleText);
+                window.draw(nameLabel);
+                window.draw(nameBox);
+                window.draw(nameText);
+                window.draw(gradeLabel);
+                window.draw(gradeBox);
+                window.draw(gradeText);
+                window.draw(submitButton);
+                window.draw(submitButtonText);
+                window.draw(submitResultText);
+            }
+            
+            window.display();
         }
-    }
-    
-    bool isTaskCompleted() const {
-        return taskCompleted;
-    }
-    
-    bool isTaskFailed() const {
-        return taskFailed;
     }
 };
 
 int main() {
-    WifiOffTask game;
-    game.run();
-    
+    GradeChangerSystem system;
+    system.run();
     return 0;
 }
