@@ -100,7 +100,7 @@ int main() {
     pageCountText.setPosition(50, 50);
 
     // Task completion text
-    sf::Text completionText("TASK COMPLETED!", font, 48);
+    sf::Text completionText("TASK COMPLETED!(4)", font, 48);
     completionText.setFillColor(sf::Color::Green);
     completionText.setPosition(300, 300);
 
