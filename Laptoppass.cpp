@@ -1,232 +1,252 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <string>
-#include <vector>
-#include <random>
-#include <algorithm>
-#include <cctype>
 #include <sstream>
-#include <iomanip>
+#include <climits>
 
-class PasswordGame {
+class IntegerOverflowTask {
 private:
     sf::RenderWindow window;
     sf::Font font;
-    sf::Text titleText, instructionText, cipherText, inputText, resultText, attemptsText, timerText;
-    sf::RectangleShape inputBox;
     
-    std::string originalMessage;
-    std::string encryptedMessage;
-    std::string userInput;
-    int caesarShift;
-    int attempts;
-    bool gameWon;
-    bool gameLost;
-    bool showCredentials;
+    // States
+    enum State { INPUT_PHASE, SUCCESS_PHASE };
+    State currentState;
+    
+    // Input handling
+    std::string inputText;
     bool inputActive;
     
-    sf::RectangleShape credentialBox;
-    sf::Text credentialText;
+    // UI elements
+    sf::RectangleShape inputBox;
+    sf::RectangleShape usernameBox;
+    sf::RectangleShape passwordBox;
+    sf::Text messageText;
+    sf::Text inputDisplayText;
+    sf::Text usernameLabel;
+    sf::Text usernameText;
+    sf::Text passwordLabel;
+    sf::Text passwordText;
+    sf::Text successMessage;
     
-    sf::Clock gameTimer;
-    sf::Clock closeTimer;
-    float timeLimit; // 1 minute 50 seconds = 110 seconds
-    bool startCloseTimer;
+    // Background elements
+    sf::RectangleShape backgroundGradient;
+    std::vector<sf::CircleShape> backgroundCircles;
+    sf::RectangleShape titleBar;
+    
+    const long long INT32_MAX_VALUE = 2147483647; // 2^31 - 1
     
 public:
-    PasswordGame() : window(sf::VideoMode(1200, 800), "Capture The Ultimate Password"),
-                     attempts(3), gameWon(false), gameLost(false), showCredentials(false),
-                     inputActive(true), timeLimit(110.0f), startCloseTimer(false) {
+    IntegerOverflowTask() : window(sf::VideoMode(800, 600), "Integer Overflow Task"), 
+                           currentState(INPUT_PHASE), inputActive(true) {
         
+        // Load font (using default system font)
         if (!font.loadFromFile("arial.ttf")) {
-            std::cout << "Warning: Could not load font file. Using default font." << std::endl;
+            // If arial.ttf is not found, try to use a system font
+            // You might need to provide a path to a font file on your system
+            std::cout << "Warning: Could not load font. Using default font." << std::endl;
         }
         
-        generateCipherChallenge();
         setupUI();
-        gameTimer.restart();
-    }
-    
-    void generateCipherChallenge() {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        
-        // Random messages to encrypt
-        std::vector<std::string> messages = {
-            "CONGRATULATIONS YOU SOLVED THE CIPHER",
-            "THE ULTIMATE PASSWORD IS YOURS NOW",
-            "EXCELLENT WORK ON BREAKING THE CODE",
-            "YOU HAVE MASTERED THE CAESAR CIPHER",
-            "VICTORY IS YOURS WELL DONE AGENT",
-            "SECRET MESSAGE DECODED SUCCESSFULLY",
-            "MISSION ACCOMPLISHED PASSWORD UNLOCKED"
-        };
-        
-        std::uniform_int_distribution<> msgDis(0, messages.size() - 1);
-        std::uniform_int_distribution<> shiftDis(1, 25);
-        
-        originalMessage = messages[msgDis(gen)];
-        caesarShift = shiftDis(gen);
-        
-        // Encrypt the message using Caesar cipher
-        encryptedMessage = caesarEncrypt(originalMessage, caesarShift);
-    }
-    
-    std::string caesarEncrypt(const std::string& text, int shift) {
-        std::string result = "";
-        for (char c : text) {
-            if (std::isalpha(c)) {
-                char base = std::isupper(c) ? 'A' : 'a';
-                result += char((c - base + shift) % 26 + base);
-            } else {
-                result += c;
-            }
-        }
-        return result;
-    }
-    
-    std::string caesarDecrypt(const std::string& text, int shift) {
-        return caesarEncrypt(text, 26 - shift);
     }
     
     void setupUI() {
-        // Title
-        titleText.setFont(font);
-        titleText.setString("Capture The Ultimate Password");
-        titleText.setCharacterSize(30);
-        titleText.setFillColor(sf::Color::White);
-        titleText.setPosition(300, 20);
+        // Create attractive background elements
+        setupBackground();
         
-        // Instructions
-        instructionText.setFont(font);
-        instructionText.setString("To get the ultimate sir's laptop password, you need to decode this Caesar cipher.\nUse Caesar Shifting to decrypt the message below.\nThe shift value is between 1-25. You have 1 minute 50 seconds and 3 attempts.\nType your decrypted message in the box below:");
-        instructionText.setCharacterSize(16);
-        instructionText.setFillColor(sf::Color::Yellow);
-        instructionText.setPosition(50, 70);
+        // Title bar
+        titleBar.setSize(sf::Vector2f(800, 60));
+        titleBar.setPosition(0, 0);
+        titleBar.setFillColor(sf::Color(45, 52, 64, 200)); // Dark blue-gray with transparency
         
-        // Encrypted message display
-        cipherText.setFont(font);
-        cipherText.setString("Encrypted Message: " + encryptedMessage);
-        cipherText.setCharacterSize(20);
-        cipherText.setFillColor(sf::Color::Cyan);
-        cipherText.setPosition(50, 180);
-        
-        // Input box
-        inputBox.setSize(sf::Vector2f(800, 50));
-        inputBox.setFillColor(sf::Color::White);
+        // Input box setup with modern styling
+        inputBox.setSize(sf::Vector2f(400, 50));
+        inputBox.setPosition(200, 280);
+        inputBox.setFillColor(sf::Color(255, 255, 255, 240));
+        inputBox.setOutlineColor(sf::Color(76, 175, 80)); // Green outline
         inputBox.setOutlineThickness(3);
-        inputBox.setOutlineColor(sf::Color::Blue);
-        inputBox.setPosition(50, 250);
         
-        // Input text
-        inputText.setFont(font);
-        inputText.setCharacterSize(18);
-        inputText.setFillColor(sf::Color::Black);
-        inputText.setPosition(60, 265);
+        // Message text with better styling
+        messageText.setFont(font);
+        messageText.setString("Make integer overflow");
+        messageText.setCharacterSize(28);
+        messageText.setFillColor(sf::Color::White);
+        messageText.setStyle(sf::Text::Bold);
+        messageText.setPosition(250, 15);
         
-        // Timer display
-        timerText.setFont(font);
-        timerText.setCharacterSize(20);
-        timerText.setFillColor(sf::Color::Red);
-        timerText.setPosition(50, 320);
+        // Input display text
+        inputDisplayText.setFont(font);
+        inputDisplayText.setCharacterSize(22);
+        inputDisplayText.setFillColor(sf::Color(33, 37, 41));
+        inputDisplayText.setPosition(210, 293);
         
-        // Attempts display
-        attemptsText.setFont(font);
-        attemptsText.setCharacterSize(20);
-        attemptsText.setFillColor(sf::Color::Red);
-        attemptsText.setPosition(50, 350);
-        updateAttemptsText();
+        // Success phase UI elements with modern styling
+        usernameBox.setSize(sf::Vector2f(320, 45));
+        usernameBox.setPosition(240, 200);
+        usernameBox.setFillColor(sf::Color(255, 255, 255, 240));
+        usernameBox.setOutlineColor(sf::Color(33, 150, 243)); // Blue outline
+        usernameBox.setOutlineThickness(3);
         
-        // Result text
-        resultText.setFont(font);
-        resultText.setCharacterSize(24);
-        resultText.setFillColor(sf::Color::Green);
-        resultText.setPosition(50, 400);
+        passwordBox.setSize(sf::Vector2f(320, 45));
+        passwordBox.setPosition(240, 280);
+        passwordBox.setFillColor(sf::Color(255, 255, 255, 240));
+        passwordBox.setOutlineColor(sf::Color(33, 150, 243)); // Blue outline
+        passwordBox.setOutlineThickness(3);
         
-        // Credential box
-        credentialBox.setSize(sf::Vector2f(500, 150));
-        credentialBox.setFillColor(sf::Color::Black);
-        credentialBox.setOutlineThickness(3);
-        credentialBox.setOutlineColor(sf::Color::Green);
-        credentialBox.setPosition(350, 450);
+        usernameLabel.setFont(font);
+        usernameLabel.setString("Username:");
+        usernameLabel.setCharacterSize(20);
+        usernameLabel.setFillColor(sf::Color::White);
+        usernameLabel.setStyle(sf::Text::Bold);
+        usernameLabel.setPosition(130, 210);
         
-        credentialText.setFont(font);
-        credentialText.setCharacterSize(20);
-        credentialText.setFillColor(sf::Color::Green);
-        credentialText.setPosition(370, 480);
+        usernameText.setFont(font);
+        usernameText.setString("Admin");
+        usernameText.setCharacterSize(20);
+        usernameText.setFillColor(sf::Color(33, 37, 41));
+        usernameText.setPosition(250, 210);
+        
+        passwordLabel.setFont(font);
+        passwordLabel.setString("Password:");
+        passwordLabel.setCharacterSize(20);
+        passwordLabel.setFillColor(sf::Color::White);
+        passwordLabel.setStyle(sf::Text::Bold);
+        passwordLabel.setPosition(130, 290);
+        
+        passwordText.setFont(font);
+        passwordText.setString("924689093745");
+        passwordText.setCharacterSize(20);
+        passwordText.setFillColor(sf::Color(33, 37, 41));
+        passwordText.setPosition(250, 290);
+        
+        successMessage.setFont(font);
+        successMessage.setString("Task passed!!! Press the Enter button to exit the task");
+        successMessage.setCharacterSize(22);
+        successMessage.setFillColor(sf::Color(76, 175, 80)); // Green color
+        successMessage.setStyle(sf::Text::Bold);
+        successMessage.setPosition(120, 370);
     }
     
-    void updateAttemptsText() {
-        attemptsText.setString("Attempts remaining: " + std::to_string(attempts));
+    void setupBackground() {
+        // Create gradient-like background with multiple rectangles
+        backgroundGradient.setSize(sf::Vector2f(800, 600));
+        backgroundGradient.setPosition(0, 0);
+        
+        // Create decorative circles for background
+        backgroundCircles.clear();
+        
+        // Large decorative circles
+        sf::CircleShape circle1(80);
+        circle1.setPosition(-40, -40);
+        circle1.setFillColor(sf::Color(103, 58, 183, 30)); // Purple with low opacity
+        backgroundCircles.push_back(circle1);
+        
+        sf::CircleShape circle2(60);
+        circle2.setPosition(700, 50);
+        circle2.setFillColor(sf::Color(233, 30, 99, 25)); // Pink with low opacity
+        backgroundCircles.push_back(circle2);
+        
+        sf::CircleShape circle3(100);
+        circle3.setPosition(650, 450);
+        circle3.setFillColor(sf::Color(33, 150, 243, 20)); // Blue with low opacity
+        backgroundCircles.push_back(circle3);
+        
+        sf::CircleShape circle4(45);
+        circle4.setPosition(50, 450);
+        circle4.setFillColor(sf::Color(76, 175, 80, 35)); // Green with low opacity
+        backgroundCircles.push_back(circle4);
+        
+        sf::CircleShape circle5(70);
+        circle5.setPosition(100, 100);
+        circle5.setFillColor(sf::Color(255, 193, 7, 25)); // Amber with low opacity
+        backgroundCircles.push_back(circle5);
     }
     
-    void updateTimer() {
-        float elapsed = gameTimer.getElapsedTime().asSeconds();
-        float remaining = timeLimit - elapsed;
+    bool isIntegerOverflow(const std::string& input) {
+        if (input.empty()) return false;
         
-        if (remaining <= 0 && !gameWon) {
-            gameLost = true;
-            resultText.setString("Time's up! Task Failed! Window will close in 3 seconds...");
-            resultText.setFillColor(sf::Color::Red);
-            inputActive = false;
-            startCloseTimer = true;
-            closeTimer.restart();
-            return;
+        try {
+            // Convert to long long to check if it exceeds int32 max
+            long long value = std::stoll(input);
+            return value > INT32_MAX_VALUE;
+        } catch (const std::exception&) {
+            return false;
         }
-        
-        int minutes = (int)remaining / 60;
-        int seconds = (int)remaining % 60;
-        timerText.setString("Time remaining: " + std::to_string(minutes) + ":" + 
-                           (seconds < 10 ? "0" : "") + std::to_string(seconds));
     }
     
-    void handleTextInput(char c) {
-        if (!inputActive || gameWon || gameLost) return;
-        
-        if (c == '\b') { // Backspace
-            if (!userInput.empty()) {
-                userInput.pop_back();
+    void handleInput(sf::Event& event) {
+        if (currentState == INPUT_PHASE) {
+            if (event.type == sf::Event::TextEntered) {
+                if (event.text.unicode == 8) { // Backspace
+                    if (!inputText.empty()) {
+                        inputText.pop_back();
+                    }
+                } else if (event.text.unicode >= 48 && event.text.unicode <= 57) { // Numbers 0-9
+                    inputText += static_cast<char>(event.text.unicode);
+                } else if (event.text.unicode == 13) { // Enter key
+                    if (isIntegerOverflow(inputText)) {
+                        currentState = SUCCESS_PHASE;
+                    }
+                }
+                inputDisplayText.setString(inputText);
             }
-        } else if (c == '\r' || c == '\n') { // Enter key
-            checkAnswer();
-        } else if (std::isprint(c) && userInput.length() < 60) {
-            userInput += std::toupper(c);
+        } else if (currentState == SUCCESS_PHASE) {
+            if (event.type == sf::Event::KeyPressed) {
+                if (event.key.code == sf::Keyboard::Enter) {
+                    window.close(); // Exit the task
+                }
+            }
         }
-        
-        inputText.setString(userInput);
     }
     
-    void checkAnswer() {
-        if (userInput.empty()) return;
+    void render() {
+        // Create gradient background effect
+        window.clear(sf::Color(67, 56, 202)); // Deep purple base
         
-        // Check if the decrypted message matches the original
-        if (userInput == originalMessage) {
-            gameWon = true;
-            resultText.setString("Task Passed! Correct decryption!");
-            resultText.setFillColor(sf::Color::Green);
-            showCredentials = true;
-            credentialText.setString("CREDENTIALS UNLOCKED:\n\nUsername: Admin\nPassword: 924689093745\n\nWindow will close in 10 seconds...");
-            inputActive = false;
-            startCloseTimer = true;
-            closeTimer.restart();
-        } else {
-            attempts--;
-            updateAttemptsText();
+        // Draw gradient overlay
+        sf::Vertex gradient[] = {
+            sf::Vertex(sf::Vector2f(0, 0), sf::Color(67, 56, 202)),     // Top-left: Deep purple
+            sf::Vertex(sf::Vector2f(800, 0), sf::Color(79, 70, 229)),   // Top-right: Lighter purple
+            sf::Vertex(sf::Vector2f(800, 600), sf::Color(99, 102, 241)), // Bottom-right: Even lighter
+            sf::Vertex(sf::Vector2f(0, 600), sf::Color(67, 56, 202))    // Bottom-left: Deep purple
+        };
+        window.draw(gradient, 4, sf::Quads);
+        
+        // Draw decorative background circles
+        for (const auto& circle : backgroundCircles) {
+            window.draw(circle);
+        }
+        
+        if (currentState == INPUT_PHASE) {
+            // Draw input phase
+            window.draw(titleBar);
+            window.draw(messageText);
+            window.draw(inputBox);
+            window.draw(inputDisplayText);
+        } else if (currentState == SUCCESS_PHASE) {
+            // Draw success phase with semi-transparent overlay
+            sf::RectangleShape overlay;
+            overlay.setSize(sf::Vector2f(800, 600));
+            overlay.setFillColor(sf::Color(0, 0, 0, 50)); // Dark overlay
+            window.draw(overlay);
             
-            if (attempts <= 0) {
-                gameLost = true;
-                resultText.setString("Task Failed! Correct message was: " + originalMessage + "\nWindow will close in 3 seconds...");
-                resultText.setFillColor(sf::Color::Red);
-                inputActive = false;
-                startCloseTimer = true;
-                closeTimer.restart();
-            } else {
-                resultText.setString("Wrong! Try again. Hint: Caesar shift = " + std::to_string(caesarShift));
-                resultText.setFillColor(sf::Color::Red);
-                userInput.clear();
-                inputText.setString("");
+            // Draw decorative background circles again for success phase
+            for (const auto& circle : backgroundCircles) {
+                window.draw(circle);
             }
+            
+            window.draw(usernameLabel);
+            window.draw(usernameBox);
+            window.draw(usernameText);
+            
+            window.draw(passwordLabel);
+            window.draw(passwordBox);
+            window.draw(passwordText);
+            
+            window.draw(successMessage);
         }
+        
+        window.display();
     }
     
     void run() {
@@ -237,53 +257,19 @@ public:
                     window.close();
                 }
                 
-                if (event.type == sf::Event::TextEntered) {
-                    handleTextInput(static_cast<char>(event.text.unicode));
-                }
-                
-                if (event.type == sf::Event::KeyPressed) {
-                    if ((gameLost || gameWon) && event.key.code == sf::Keyboard::Escape) {
-                        window.close();
-                    }
-                }
+                handleInput(event);
             }
             
-            // Update timer
-            if (!gameWon && !gameLost) {
-                updateTimer();
-            }
-            
-            // Auto-close after game ends
-            float closeTime = gameWon ? 10.0f : 3.0f; // 10 seconds for win, 3 for loss
-            if (startCloseTimer && closeTimer.getElapsedTime().asSeconds() > closeTime) {
-                window.close();
-            }
-            
-            window.clear(sf::Color::Black);
-            
-            // Draw UI elements
-            window.draw(titleText);
-            window.draw(instructionText);
-            window.draw(cipherText);
-            window.draw(inputBox);
-            window.draw(inputText);
-            window.draw(timerText);
-            window.draw(attemptsText);
-            window.draw(resultText);
-            
-            // Draw credentials if won
-            if (showCredentials) {
-                window.draw(credentialBox);
-                window.draw(credentialText);
-            }
-            
-            window.display();
+            render();
         }
     }
 };
 
 int main() {
-    PasswordGame game;
-    game.run();
+    IntegerOverflowTask task;
+    task.run();
     return 0;
 }
+
+// Compilation command:
+// g++ -o integer_overflow_task main.cpp -lsfml-graphics -lsfml-window -lsfml-system
