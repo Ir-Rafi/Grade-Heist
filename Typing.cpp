@@ -178,7 +178,7 @@ public:
         if (upperInput == currentTask) {
             taskCompleted = true;
             currentState = SUCCESS;
-            resultText.setString("ACCESS GRANTED - TASK COMPLETE");
+            resultText.setString("ACCESS GRANTED - TASK COMPLETE(6)");
             resultText.setFillColor(sf::Color::Green);
             resultText.setPosition(150, 480);
         } else {
