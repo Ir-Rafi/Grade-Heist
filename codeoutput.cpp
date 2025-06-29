@@ -171,7 +171,7 @@ public:
         if (input == correctAnswer) {
             gameWon = true;
             gameOver = true;
-            resultText.setString("🎉 Correct! Well done!");
+            resultText.setString("🎉 Correct! Well done!(2)");
             resultText.setFillColor(successColor);
             shouldAutoClose = true;
             autoCloseTimer.restart();
