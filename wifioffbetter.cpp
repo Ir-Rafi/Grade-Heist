@@ -366,7 +366,8 @@ public:
         if (result == TaskResult::PASSED) {
             resultText.setString("TASK PASSED!");
             resultText.setFillColor(sf::Color::Green);
-            resultMessage.setString("Congratulations! You completed the task successfully.");
+            resultMessage.setString("Congratulations! You completed the task successfully.\n");
+            resultMessage.setString("7\n");
             resultText.setPosition(270, 200);
         } else {
             resultText.setString("TASK FAILED!");
