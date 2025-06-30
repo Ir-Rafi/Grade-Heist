@@ -4,18 +4,14 @@
 #include <sstream>
 
 enum GameState {
-    WAITING_FOR_START,
     CHALLENGE_ACTIVE,
     GAME_FINISHED
 };
 
 class CodeChallenge {
 private:
-    sf::RenderWindow imageWindow;
     sf::RenderWindow challengeWindow;
     sf::Font font;
-    sf::Texture codeImageTexture;
-    sf::Sprite codeImageSprite;
     
     // Game state
     GameState currentState;
@@ -31,7 +27,6 @@ private:
     sf::Text attemptsText;
     sf::Text resultText;
     sf::Text correctAnswerText;
-    sf::Text imageWindowText;
     
     // Input handling
     std::string userInput;
@@ -49,9 +44,8 @@ private:
     sf::Color codeBackgroundColor;
     
 public:
-    CodeChallenge() : imageWindow(sf::VideoMode(600, 400), "Click to Start Challenge"),
-                      challengeWindow(sf::VideoMode(1200, 800), "C++ Code Output Challenge"),
-                      currentState(WAITING_FOR_START),
+    CodeChallenge() : challengeWindow(sf::VideoMode(1200, 800), "C++ Code Output Challenge"),
+                      currentState(CHALLENGE_ACTIVE),
                       attemptsLeft(2), gameOver(false), gameWon(false),
                       shouldAutoClose(false),
                       correctAnswer("7.6"),
@@ -64,11 +58,7 @@ public:
         // Set up the challenge code
         challengeCode = "#include <iostream>\nusing namespace std;\n#define ll long long\n\nint main() {\n    float i = 2.8000006;\n    i = i++ + ++i;\n    cout << i << endl;\n    return 0;\n}";
         
-        // Initially hide the challenge window
-        challengeWindow.setVisible(false);
-        
         initializeUI();
-        loadAssets();
     }
     
     void initializeUI() {
@@ -77,13 +67,6 @@ public:
             // Fallback to default font if arial.ttf not found
             std::cout << "Warning: Could not load arial.ttf font file\n";
         }
-        
-        // Image window text
-        imageWindowText.setFont(font);
-        imageWindowText.setString("Click on the code image to start the challenge!");
-        imageWindowText.setCharacterSize(20);
-        imageWindowText.setFillColor(sf::Color::White);
-        imageWindowText.setPosition(50, 30);
         
         // Title
         titleText.setFont(font);
@@ -141,26 +124,6 @@ public:
         correctAnswerText.setPosition(50, 600);
     }
     
-    void loadAssets() {
-        // Load code image
-        if (!codeImageTexture.loadFromFile("code.png")) {
-            std::cout << "Warning: Could not load code.png image file\n";
-        } else {
-            codeImageSprite.setTexture(codeImageTexture);
-            
-            // Scale image to fit in the image window
-            sf::Vector2u imageSize = codeImageTexture.getSize();
-            sf::Vector2u windowSize = imageWindow.getSize();
-            
-            float scaleX = (float)(windowSize.x - 100) / imageSize.x;
-            float scaleY = (float)(windowSize.y - 150) / imageSize.y;
-            float scale = std::min(scaleX, scaleY);
-            
-            codeImageSprite.setScale(scale, scale);
-            codeImageSprite.setPosition(50, 80);
-        }
-    }
-    
     void updateAttemptsText() {
         attemptsText.setString("Attempts left: " + std::to_string(attemptsLeft));
     }
@@ -171,10 +134,10 @@ public:
         if (input == correctAnswer) {
             gameWon = true;
             gameOver = true;
-            resultText.setString("🎉 Correct! Well done!(2)");
+            resultText.setString("🎉 Correct! Well done!");
             resultText.setFillColor(successColor);
-            shouldAutoClose = true;
-            autoCloseTimer.restart();
+            correctAnswerText.setString("Task passed!!!! Press Enter button to exit the task");
+            correctAnswerText.setFillColor(successColor);
         } else {
             attemptsLeft--;
             updateAttemptsText();
@@ -183,7 +146,7 @@ public:
                 gameOver = true;
                 resultText.setString("❌ Game Over! Better luck next time!");
                 resultText.setFillColor(errorColor);
-                correctAnswerText.setString("The correct answer was: " + correctAnswer);
+               // correctAnswerText.setString("The correct answer was: " + correctAnswer);
                 shouldAutoClose = true;
                 autoCloseTimer.restart();
             } else {
@@ -194,78 +157,35 @@ public:
     }
     
     void processTextInput(sf::Uint32 unicode) {
-        if (gameOver || currentState != CHALLENGE_ACTIVE) return;
-        
         if (unicode == 8) { // Backspace
-            if (!userInput.empty()) {
+            if (!gameOver && !userInput.empty()) {
                 userInput.pop_back();
             }
         } else if (unicode == 13) { // Enter
-            if (!userInput.empty()) {
+            if (gameOver && gameWon) {
+                // Exit if game is won and Enter is pressed
+                challengeWindow.close();
+                return;
+            }
+            if (!gameOver && !userInput.empty()) {
                 handleInput(userInput);
                 userInput.clear();
             }
-        } else if (unicode >= 32 && unicode < 127) { // Printable characters
+        } else if (unicode >= 32 && unicode < 127 && !gameOver) { // Printable characters
             userInput += static_cast<char>(unicode);
         }
         
-        userInputText.setString(userInput + "_"); // Show cursor
-    }
-    
-    void handleImageWindowClick(int x, int y) {
-        if (currentState == WAITING_FOR_START) {
-            // Check if click is on the image
-            sf::FloatRect imageBounds = codeImageSprite.getGlobalBounds();
-            if (imageBounds.contains(x, y)) {
-                startChallenge();
-            }
+        if (!gameOver) {
+            userInputText.setString(userInput + "_"); // Show cursor
+        } else {
+            userInputText.setString(""); // Clear input display when game is over
         }
-    }
-    
-    void startChallenge() {
-        currentState = CHALLENGE_ACTIVE;
-        imageWindow.setVisible(false);
-        challengeWindow.setVisible(true);
-        
-        // Reset game state
-        attemptsLeft = 2;
-        gameOver = false;
-        gameWon = false;
-        userInput.clear();
-        resultText.setString("");
-        correctAnswerText.setString("");
-        userInputText.setString("");
-        updateAttemptsText();
     }
     
     void handleKeyPress(sf::Keyboard::Key key) {
         if (key == sf::Keyboard::Escape) {
-            imageWindow.close();
             challengeWindow.close();
         }
-    }
-    
-    void drawImageWindow() {
-        imageWindow.clear(backgroundColor);
-        
-        // Draw instruction text
-        imageWindow.draw(imageWindowText);
-        
-        // Draw code image if loaded
-        if (codeImageTexture.getSize().x > 0) {
-            imageWindow.draw(codeImageSprite);
-        }
-        
-        // Draw click instruction
-        sf::Text clickText;
-        clickText.setFont(font);
-        clickText.setString("Click on the image above to begin!");
-        clickText.setCharacterSize(16);
-        clickText.setFillColor(sf::Color::Yellow);
-        clickText.setPosition(50, imageWindow.getSize().y - 50);
-        imageWindow.draw(clickText);
-        
-        imageWindow.display();
     }
     
     void drawChallengeWindow() {
@@ -303,7 +223,7 @@ public:
         if (shouldAutoClose) {
             sf::Text autoCloseText;
             autoCloseText.setFont(font);
-            autoCloseText.setString("Window will close automatically in 3 seconds...");
+            autoCloseText.setString("Window will close automatically in 2 seconds...");
             autoCloseText.setCharacterSize(16);
             autoCloseText.setFillColor(sf::Color::White);
             autoCloseText.setPosition(50, 650);
@@ -314,38 +234,13 @@ public:
     }
     
     void run() {
-        while (imageWindow.isOpen() || challengeWindow.isOpen()) {
-            // Handle image window events
-            sf::Event imageEvent;
-            while (imageWindow.pollEvent(imageEvent)) {
-                switch (imageEvent.type) {
-                    case sf::Event::Closed:
-                        imageWindow.close();
-                        challengeWindow.close();
-                        break;
-                        
-                    case sf::Event::MouseButtonPressed:
-                        if (imageEvent.mouseButton.button == sf::Mouse::Left) {
-                            handleImageWindowClick(imageEvent.mouseButton.x, imageEvent.mouseButton.y);
-                        }
-                        break;
-                        
-                    case sf::Event::KeyPressed:
-                        handleKeyPress(imageEvent.key.code);
-                        break;
-                        
-                    default:
-                        break;
-                }
-            }
-            
+        while (challengeWindow.isOpen()) {
             // Handle challenge window events
             sf::Event challengeEvent;
             while (challengeWindow.pollEvent(challengeEvent)) {
                 switch (challengeEvent.type) {
                     case sf::Event::Closed:
                         challengeWindow.close();
-                        imageWindow.close();
                         break;
                         
                     case sf::Event::TextEntered:
@@ -362,20 +257,13 @@ public:
             }
             
             // Auto-close logic
-            if (shouldAutoClose && autoCloseTimer.getElapsedTime().asSeconds() >= 3.0f) {
+            if (shouldAutoClose && autoCloseTimer.getElapsedTime().asSeconds() >= 2.0f) {
                 challengeWindow.close();
-                imageWindow.close();
                 break;
             }
             
-            // Draw windows
-            if (imageWindow.isOpen() && currentState == WAITING_FOR_START) {
-                drawImageWindow();
-            }
-            
-            if (challengeWindow.isOpen() && currentState == CHALLENGE_ACTIVE) {
-                drawChallengeWindow();
-            }
+            // Draw window
+            drawChallengeWindow();
         }
     }
 };
@@ -390,13 +278,12 @@ int main() {
 // g++ -o code_challenge main.cpp -lsfml-graphics -lsfml-window -lsfml-system
 // 
 // Required files:
-// - code.png (your code image)
 // - arial.ttf (or any other TTF font file)
 //
 // Features:
-// - Separate image window that must be clicked to start
-// - Challenge window appears after clicking the image
-// - Automatically closes after 3 seconds when game ends (win or lose)
+// - Single challenge window that starts immediately
+// - For correct answer: Shows "Task passed!!!! Press Enter button to exit the task" and exits on Enter
+// - For wrong answers: Automatically closes after 2 seconds when failing twice
 // - 2 attempts to guess the output
 // - Visual feedback for correct/wrong answers
 // - Clean, modern UI with syntax highlighting colors
