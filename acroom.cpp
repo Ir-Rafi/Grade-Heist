@@ -198,8 +198,14 @@ public:
                 sf::Vector2i m = sf::Mouse::getPosition(window);
                 handleMouseClick({static_cast<float>(m.x), static_cast<float>(m.y)});
             }
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-                window.close();
+            if (event.type == sf::Event::KeyPressed) {
+                if (event.key.code == sf::Keyboard::Escape) {
+                    window.close();
+                }
+                // Handle Enter key press for successful task completion
+                if (event.key.code == sf::Keyboard::Enter && currentState == GameState::RESULT && taskPassed) {
+                    window.close();
+                }
             }
         }
     }
@@ -242,23 +248,36 @@ public:
     void showResult() {
         currentState = GameState::RESULT;
         if (taskPassed) {
-            resultText.setString("🎉 TASK PASSED! 🎉");
+            resultText.setString("\U0001f389 TASK PASSED! \U0001f389");
             resultText.setFillColor(successColor);
             window.setTitle("Mission Accomplished!");
-            instructionText.setString("Perfect! You selected Room 405 and turned OFF the AC.");
+            instructionText.setString("Task passed!!! Press the Enter button to exit the task");
+            instructionText.setCharacterSize(20);
+            instructionText.setFillColor(successColor);
+            instructionText.setPosition(240, 320);
+            
+            // Hide the close button for successful completion
+            closeButton.setFillColor(sf::Color::Transparent);
+            closeButton.setOutlineColor(sf::Color::Transparent);
+            closeButtonText.setFillColor(sf::Color::Transparent);
         } else {
-            resultText.setString("❌ TASK FAILED! ❌");
+            resultText.setString("\u274c TASK FAILED! \u274c");
             resultText.setFillColor(failColor);
             window.setTitle("Mission Failed!");
             if (selectedRoom != 405) {
-                instructionText.setString("Wrong room! The correct room was 405.");
+                instructionText.setString("Wrong room!");
             } else {
-                instructionText.setString("Wrong action! You should have turned OFF the AC.");
+                instructionText.setString("Wrong action!");
             }
+            instructionText.setCharacterSize(18);
+            instructionText.setFillColor(sf::Color::White);
+            instructionText.setPosition(200, 320);
+            
+            // Keep the close button visible for failed attempts
+            closeButton.setFillColor(buttonColor);
+            closeButton.setOutlineColor(sf::Color::White);
+            closeButtonText.setFillColor(sf::Color::White);
         }
-        instructionText.setCharacterSize(18);
-        instructionText.setFillColor(sf::Color::White);
-        instructionText.setPosition(200, 320);
     }
     
     void render() {
