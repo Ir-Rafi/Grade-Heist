@@ -21,14 +21,9 @@ private:
     sf::Text titleText;
     sf::Text taskText;
     sf::Text inputText;
-    sf::Text timerText;
     sf::Text resultText;
     sf::Text promptText;
-    
-    // Timer
-    sf::Clock gameClock;
-    float timeLimit;
-    float timeRemaining;
+    sf::Text exitText;
     
     // Colors and shapes
     sf::Color backgroundColor;
@@ -42,6 +37,7 @@ private:
     bool taskCompleted;
     bool taskFailed;
     bool windowShouldClose;
+    bool waitingForExit;
 
 public:
     ComputerTaskWindow() : taskWindow(sf::VideoMode(800, 600), "Computer Terminal - Task Interface", sf::Style::Close) {
@@ -90,6 +86,7 @@ public:
         setupTexts();
         startNewTask();
         windowShouldClose = false;
+        waitingForExit = false;
     }
     
     void setupTexts() {
@@ -104,7 +101,7 @@ public:
         taskText.setFont(font);
         taskText.setCharacterSize(24);
         taskText.setFillColor(sf::Color::Cyan);
-        taskText.setPosition(100, 200);
+        taskText.setPosition(100, 150);
         
         // Prompt text
         promptText.setFont(font);
@@ -119,16 +116,17 @@ public:
         inputText.setFillColor(sf::Color::White);
         inputText.setPosition(110, 410);
         
-        // Timer
-        timerText.setFont(font);
-        timerText.setCharacterSize(20);
-        timerText.setFillColor(sf::Color::Red);
-        timerText.setPosition(100, 120);
-        
         // Result text
         resultText.setFont(font);
-        resultText.setCharacterSize(28);
-        resultText.setPosition(200, 480);
+        resultText.setCharacterSize(24);
+        resultText.setPosition(150, 480);
+        
+        // Exit instruction text
+        exitText.setFont(font);
+        exitText.setString("Task Passed!!!! Press the enter button to exit the task");
+        exitText.setCharacterSize(20);
+        exitText.setFillColor(sf::Color::Green);
+        exitText.setPosition(120, 520);
     }
     
     void startNewTask() {
@@ -143,9 +141,7 @@ public:
         taskCompleted = false;
         taskFailed = false;
         currentState = PLAYING;
-        gameClock.restart();
-        timeLimit = 15.0f;
-        timeRemaining = timeLimit;
+        waitingForExit = false;
         
         // Update display
         taskText.setString("REQUIRED: " + currentTask);
@@ -153,21 +149,28 @@ public:
     }
     
     void handleInput(const sf::Event& event) {
-        if (currentState == PLAYING && event.type == sf::Event::TextEntered) {
-            if (event.text.unicode == 8) { // Backspace
-                if (!userInput.empty()) {
-                    userInput.pop_back();
+        if (event.type == sf::Event::TextEntered) {
+            if (waitingForExit) {
+                // If waiting for exit and Enter is pressed, close the window
+                if (event.text.unicode == 13) { // Enter
+                    windowShouldClose = true;
                 }
-            } else if (event.text.unicode == 13) { // Enter
-                checkTaskCompletion();
-            } else if (event.text.unicode >= 32 && event.text.unicode < 127) {
-                userInput += static_cast<char>(event.text.unicode);
+            } else if (currentState == PLAYING) {
+                if (event.text.unicode == 8) { // Backspace
+                    if (!userInput.empty()) {
+                        userInput.pop_back();
+                    }
+                } else if (event.text.unicode == 13) { // Enter
+                    checkTaskCompletion();
+                } else if (event.text.unicode >= 32 && event.text.unicode < 127) {
+                    userInput += static_cast<char>(event.text.unicode);
+                }
+                
+                // Convert to uppercase for display
+                std::string displayInput = userInput;
+                std::transform(displayInput.begin(), displayInput.end(), displayInput.begin(), ::toupper);
+                inputText.setString(displayInput);
             }
-            
-            // Convert to uppercase for display
-            std::string displayInput = userInput;
-            std::transform(displayInput.begin(), displayInput.end(), displayInput.begin(), ::toupper);
-            inputText.setString(displayInput);
         }
     }
     
@@ -178,7 +181,8 @@ public:
         if (upperInput == currentTask) {
             taskCompleted = true;
             currentState = SUCCESS;
-            resultText.setString("ACCESS GRANTED - TASK COMPLETE(6)");
+            waitingForExit = true;
+            resultText.setString("ACCESS GRANTED - TASK COMPLETE");
             resultText.setFillColor(sf::Color::Green);
             resultText.setPosition(150, 480);
         } else {
@@ -191,35 +195,7 @@ public:
     }
     
     void update() {
-        if (currentState == PLAYING) {
-            timeRemaining = timeLimit - gameClock.getElapsedTime().asSeconds();
-            
-            if (timeRemaining <= 0 && !taskCompleted) {
-                taskFailed = true;
-                currentState = FAILED;
-                resultText.setString("TIMEOUT - SYSTEM LOCKED");
-                resultText.setFillColor(sf::Color::Red);
-                resultText.setPosition(200, 480);
-            }
-            
-            // Update timer display
-            timerText.setString("TIME REMAINING: " + std::to_string((int)timeRemaining) + " SECONDS");
-            
-            // Change timer color based on remaining time
-            if (timeRemaining < 5) {
-                timerText.setFillColor(sf::Color::Red);
-            } else if (timeRemaining < 10) {
-                timerText.setFillColor(sf::Color::Yellow);
-            } else {
-                timerText.setFillColor(sf::Color::Green);
-            }
-        }
-        
-        // Auto-close window after task completion
-        if ((currentState == SUCCESS || currentState == FAILED) && 
-            gameClock.getElapsedTime().asSeconds() > timeLimit + 3.0f) {
-            windowShouldClose = true;
-        }
+        // No timer updates needed anymore
     }
     
     void render() {
@@ -234,29 +210,37 @@ public:
             taskWindow.draw(promptText);
             taskWindow.draw(inputBox);
             taskWindow.draw(inputText);
-            taskWindow.draw(timerText);
             
             // Draw blinking cursor
             sf::RectangleShape cursor(sf::Vector2f(3, 22));
             cursor.setFillColor(sf::Color::White);
             cursor.setPosition(110 + inputText.getLocalBounds().width, 415);
             
-            if ((int)(gameClock.getElapsedTime().asSeconds() * 2) % 2 == 0) {
+            // Simple blinking effect using a counter
+            static int blinkCounter = 0;
+            blinkCounter++;
+            if ((blinkCounter / 30) % 2 == 0) { // Blink every 30 frames
                 taskWindow.draw(cursor);
             }
-        } else {
+        } else if (currentState == SUCCESS) {
+            taskWindow.draw(taskText);
+            taskWindow.draw(inputBox);
+            taskWindow.draw(inputText);
+            taskWindow.draw(resultText);
+            taskWindow.draw(exitText);
+        } else if (currentState == FAILED) {
             taskWindow.draw(taskText);
             taskWindow.draw(inputBox);
             taskWindow.draw(inputText);
             taskWindow.draw(resultText);
             
-            sf::Text closeText;
-            closeText.setFont(font);
-            closeText.setString("Window will close automatically...");
-            closeText.setCharacterSize(16);
-            closeText.setFillColor(sf::Color::White);
-            closeText.setPosition(250, 550);
-            taskWindow.draw(closeText);
+            sf::Text retryText;
+            retryText.setFont(font);
+            retryText.setString("Try again...");
+            retryText.setCharacterSize(18);
+            retryText.setFillColor(sf::Color::Yellow);
+            retryText.setPosition(350, 520);
+            taskWindow.draw(retryText);
         }
         
         taskWindow.display();
@@ -283,149 +267,10 @@ public:
     }
 };
 
-class MainGame {
-private:
-    sf::RenderWindow mainWindow;
-    sf::Texture computerTexture;
-    sf::Sprite computerSprite;
-    sf::Font font;
-    
-    // UI elements
-    sf::Text titleText;
-    sf::Text instructionText;
-    sf::Text statusText;
-    
-    sf::Color backgroundColor;
-    bool taskInProgress;
-    int completedTasks;
 
-public:
-    MainGame() : mainWindow(sf::VideoMode(1024, 768), "Among Us - Computer Room", sf::Style::Close) {
-        initialize();
-    }
-    
-    void initialize() {
-        // Load resources
-        if (!computerTexture.loadFromFile("computer.png")) {
-            std::cout << "Error loading computer.png" << std::endl;
-        }
-        
-        if (!font.loadFromFile("arial.ttf")) {
-            std::cout << "Error loading arial.ttf" << std::endl;
-        }
-        
-        // Setup computer sprite
-        computerSprite.setTexture(computerTexture);
-        float scaleX = 400.0f / computerTexture.getSize().x;
-        float scaleY = 300.0f / computerTexture.getSize().y;
-        computerSprite.setScale(scaleX, scaleY);
-        computerSprite.setPosition(300, 250);
-        
-        backgroundColor = sf::Color(25, 25, 35);
-        taskInProgress = false;
-        completedTasks = 0;
-        
-        setupTexts();
-    }
-    
-    void setupTexts() {
-        // Title
-        titleText.setFont(font);
-        titleText.setString("COMPUTER TERMINAL ROOM");
-        titleText.setCharacterSize(36);
-        titleText.setFillColor(sf::Color::Cyan);
-        titleText.setPosition(280, 80);
-        
-        // Instructions
-        instructionText.setFont(font);
-        instructionText.setString("Click on the computer to access terminal");
-        instructionText.setCharacterSize(22);
-        instructionText.setFillColor(sf::Color::White);
-        instructionText.setPosition(280, 180);
-        
-        // Status
-        statusText.setFont(font);
-        statusText.setCharacterSize(18);
-        statusText.setFillColor(sf::Color::Green);
-        statusText.setPosition(280, 600);
-        updateStatus();
-    }
-    
-    void updateStatus() {
-        statusText.setString("Tasks completed: " + std::to_string(completedTasks));
-    }
-    
-    void handleMouseClick(int x, int y) {
-        if (!taskInProgress) {
-            sf::FloatRect computerBounds = computerSprite.getGlobalBounds();
-            if (computerBounds.contains(x, y)) {
-                taskInProgress = true;
-                
-                // Create and run computer task window
-                ComputerTaskWindow taskWindow;
-                bool taskSuccess = taskWindow.run();
-                
-                if (taskSuccess) {
-                    completedTasks++;
-                    updateStatus();
-                }
-                
-                taskInProgress = false;
-            }
-        }
-    }
-    
-    void render() {
-        mainWindow.clear(backgroundColor);
-        
-        // Draw computer with hover effect
-        sf::Vector2i mousePos = sf::Mouse::getPosition(mainWindow);
-        if (computerSprite.getGlobalBounds().contains(mousePos.x, mousePos.y) && !taskInProgress) {
-            // Add glow effect when hovering
-            sf::RectangleShape glow(sf::Vector2f(420, 320));
-            glow.setPosition(290, 240);
-            glow.setFillColor(sf::Color(0, 100, 200, 50));
-            mainWindow.draw(glow);
-        }
-        
-        mainWindow.draw(computerSprite);
-        mainWindow.draw(titleText);
-        mainWindow.draw(instructionText);
-        mainWindow.draw(statusText);
-        
-        if (taskInProgress) {
-            sf::Text processingText;
-            processingText.setFont(font);
-            processingText.setString("Accessing terminal...");
-            processingText.setCharacterSize(20);
-            processingText.setFillColor(sf::Color::Yellow);
-            processingText.setPosition(350, 450);
-            mainWindow.draw(processingText);
-        }
-        
-        mainWindow.display();
-    }
-    
-    void run() {
-        while (mainWindow.isOpen()) {
-            sf::Event event;
-            while (mainWindow.pollEvent(event)) {
-                if (event.type == sf::Event::Closed) {
-                    mainWindow.close();
-                }
-                
-                if (event.type == sf::Event::MouseButtonPressed && !taskInProgress) {
-                    handleMouseClick(event.mouseButton.x, event.mouseButton.y);
-                }
-            }
-            
-            render();
-        }
-    }
-};
 
 int main() {
-    MainGame game;
-    game.run();
+    ComputerTaskWindow taskWindow;
+    taskWindow.run();
     return 0;
 }
