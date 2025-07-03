@@ -247,7 +247,7 @@ int main() {
             break;
             
         case TaskState::TaskCompleted:
-            instr.setString("All pages processed successfully!");
+            instr.setString("All pages processed successfully!(2)");
             timerText.setString("");
             // Auto-close after 3 seconds
             if (completionClock.getElapsedTime().asSeconds() > 3.0f) {
