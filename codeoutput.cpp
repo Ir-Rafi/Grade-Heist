@@ -136,7 +136,7 @@ public:
             gameOver = true;
             resultText.setString("🎉 Correct! Well done!");
             resultText.setFillColor(successColor);
-            correctAnswerText.setString("Task passed!!!! Press Enter button to exit the task");
+            correctAnswerText.setString("Task passed!!!!(5) Press Enter button to exit the task");
             correctAnswerText.setFillColor(successColor);
         } else {
             attemptsLeft--;
