@@ -23,7 +23,6 @@ private:
     sf::Text codeDisplayText;
     sf::Text instructionText;
     sf::Text resultText;
-    sf::Text statusText;
     sf::Text attemptText;
     
     // Visual elements
@@ -47,8 +46,6 @@ private:
     sf::Clock gameClock;
     sf::Clock blinkClock;
     sf::Clock particleClock;
-    float timeLimit;
-    float timeRemaining;
     
     // Colors
     sf::Color backgroundColor;
@@ -64,6 +61,7 @@ private:
     bool taskFailed;
     bool windowShouldClose;
     bool showingHint;
+    bool waitingForExit;  // New variable to track if we're waiting for exit confirmation
     int maxDigits;
     int attemptsRemaining;
     int maxAttempts;
@@ -98,11 +96,11 @@ public:
         
         // Initialize game state
         currentState = HINT_DISPLAY;
-        timeLimit = 60.0f; // 60 seconds to solve
         taskCompleted = false;
         taskFailed = false;
         windowShouldClose = false;
         showingHint = true;
+        waitingForExit = false;  // Initialize new variable
         enteredCode = "";
         
         gameClock.restart();
@@ -278,12 +276,6 @@ public:
         clearButtonText.setFillColor(sf::Color::White);
         clearButtonText.setPosition(775, 580);
         
-        // Status text
-        statusText.setFont(font);
-        statusText.setCharacterSize(18);
-        statusText.setFillColor(sf::Color::Green);
-        statusText.setPosition(50, 100);
-        
         // Attempt text
         attemptText.setFont(font);
         attemptText.setCharacterSize(20);
@@ -294,6 +286,14 @@ public:
         resultText.setFont(font);
         resultText.setCharacterSize(24);
         resultText.setPosition(200, 720);
+    }
+    
+    void handleKeyPress(sf::Keyboard::Key key) {
+        // Handle keyboard Enter key for exit
+        if (waitingForExit && key == sf::Keyboard::Enter) {
+            windowShouldClose = true;
+            return;
+        }
     }
     
     void handleMouseClick(int x, int y) {
@@ -362,9 +362,12 @@ public:
         if (checkDigitsMatch(enteredCode, correctCode)) {
             taskCompleted = true;
             currentState = SUCCESS;
-            resultText.setString("Task passed, Hope next time u will study hard to get a good grade");
+            waitingForExit = true;  // Enable exit waiting mode
+            resultText.setString("The door is open..Now, Escape hopefully u will study well next time");
             resultText.setFillColor(successColor);
-            resultText.setPosition(150, 720);
+            resultText.setPosition(120, 720);
+            
+            // Keep enter button normal since we're using keyboard Enter key
             
             // Change lock color to green
             lockFrame.setOutlineColor(successColor);
@@ -378,9 +381,12 @@ public:
             if (attemptsRemaining <= 0) {
                 taskFailed = true;
                 currentState = FAILED;
-                resultText.setString("You are failed! It is not the correct time for u to escape");
+                waitingForExit = true;  // Enable exit waiting mode
+                resultText.setString("Task failed try again...");
                 resultText.setFillColor(failColor);
-                resultText.setPosition(150, 720);
+                resultText.setPosition(300, 720);
+                
+            // Keep enter button normal since we're using keyboard Enter key
                 
                 // Change lock color to red
                 lockFrame.setOutlineColor(failColor);
@@ -417,28 +423,8 @@ public:
         updateBackground();
         
         if (currentState == PLAYING) {
-            timeRemaining = timeLimit - gameClock.getElapsedTime().asSeconds();
-            
-            if (timeRemaining <= 0 && !taskCompleted) {
-                taskFailed = true;
-                currentState = FAILED;
-                resultText.setString("You are failed! It is not the correct time for u to escape");
-                resultText.setFillColor(failColor);
-                resultText.setPosition(150, 720);
-            }
-            
-            // Update status
-            statusText.setString("Time remaining: " + std::to_string((int)timeRemaining) + "s");
+            // Update attempt display
             attemptText.setString("Attempts: " + std::to_string(attemptsRemaining) + "/" + std::to_string(maxAttempts));
-            
-            // Change status color based on time
-            if (timeRemaining < 15) {
-                statusText.setFillColor(failColor);
-            } else if (timeRemaining < 30) {
-                statusText.setFillColor(sf::Color::Yellow);
-            } else {
-                statusText.setFillColor(sf::Color::Green);
-            }
             
             // Reset colors after wrong attempt flash
             if (gameClock.getElapsedTime().asSeconds() > 1.0f && attemptsRemaining > 0 && !taskCompleted) {
@@ -452,11 +438,7 @@ public:
             }
         }
         
-        // Auto-close window after completion
-        if ((currentState == SUCCESS || (currentState == FAILED && taskFailed)) && 
-            gameClock.getElapsedTime().asSeconds() > 5.0f) {
-            windowShouldClose = true;
-        }
+        // Removed automatic window closing - now handled by manual exit
     }
     
     void render() {
@@ -489,7 +471,7 @@ public:
             
             sf::Text wrappedHint;
             wrappedHint.setFont(font);
-            wrappedHint.setString("HINT:\n" + hintText + "\n\nDigits: 7, 4, 5, 2, 6 (any order)");
+            wrappedHint.setString("HINT:\n" + hintText);
             wrappedHint.setCharacterSize(20);
             wrappedHint.setFillColor(sf::Color(150, 255, 150));
             wrappedHint.setPosition(180, 350);
@@ -529,18 +511,18 @@ public:
             lockWindow.draw(clearButtonText);
             
             lockWindow.draw(instructionText);
-            lockWindow.draw(statusText);
             lockWindow.draw(attemptText);
             lockWindow.draw(resultText);
             
-            if (currentState == SUCCESS || (currentState == FAILED && taskFailed)) {
-                sf::Text closeText;
-                closeText.setFont(font);
-                closeText.setString("Window will close automatically...");
-                closeText.setCharacterSize(18);
-                closeText.setFillColor(sf::Color::White);
-                closeText.setPosition(350, 750);
-                lockWindow.draw(closeText);
+            // Show exit instruction when waiting for exit
+            if (waitingForExit) {
+                sf::Text exitText;
+                exitText.setFont(font);
+                exitText.setString("Press \"Enter\" key to close the program");
+                exitText.setCharacterSize(18);
+                exitText.setFillColor(sf::Color(255, 255, 100));
+                exitText.setPosition(320, 750);
+                lockWindow.draw(exitText);
             }
         }
         
@@ -560,6 +542,10 @@ public:
                 
                 if (event.type == sf::Event::MouseButtonPressed) {
                     handleMouseClick(event.mouseButton.x, event.mouseButton.y);
+                }
+                
+                if (event.type == sf::Event::KeyPressed) {
+                    handleKeyPress(event.key.code);
                 }
             }
             
