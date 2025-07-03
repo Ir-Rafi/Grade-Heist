@@ -110,7 +110,7 @@ public:
         passwordLabel.setPosition(130,290);
         
         passwordText.setFont(font);
-        passwordText.setString("924689093745");
+        passwordText.setString("9246890");
         passwordText.setCharacterSize(20);
         passwordText.setFillColor(sf::Color(33,37,41));
         passwordText.setPosition(250,290);
