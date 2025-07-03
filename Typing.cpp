@@ -123,7 +123,7 @@ public:
         
         // Exit instruction text
         exitText.setFont(font);
-        exitText.setString("Task Passed!!!! Press the enter button to exit the task");
+        exitText.setString("Task Passed!!!!(7) Press the enter button to exit the task");
         exitText.setCharacterSize(20);
         exitText.setFillColor(sf::Color::Green);
         exitText.setPosition(120, 520);
