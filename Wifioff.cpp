@@ -283,7 +283,7 @@ public:
                 else if (offBtnBox.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
                     taskPassed = true;
                     currentState = RESULT_SCREEN;
-                    resultText.setString("Task Passed!!");
+                    resultText.setString("Task Passed!!(4)");
                     resultText.setFillColor(sf::Color::Green);
                 }
             }
