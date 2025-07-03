@@ -266,7 +266,7 @@ public:
     }
     
     void checkLogin() {
-        if (loginUsername == "Admin" && loginPassword == "924689093745") {
+        if (loginUsername == "Admin" && loginPassword == "9246890") {
             loginSuccess = true;
             currentPhase = GRADE_PHASE;
             loginResultText.setString("Login Successful!(8)");
