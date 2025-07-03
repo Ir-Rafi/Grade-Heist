@@ -157,7 +157,7 @@ public:
         // Check if the answer is correct
         if (trimmedInput == correctAnswer) {
             taskPassed = true;
-            resultText.setString("TASK PASSED!(5)\nRoom Number: 405(Go and turn off this room's Ac)");
+            resultText.setString("TASK PASSED!(6)\nRoom Number: 405(Go and turn off this room's Ac)");
             resultText.setFillColor(sf::Color::Green);
         } else {
             taskPassed = false;
