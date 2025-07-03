@@ -3,9 +3,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <memory>
 #include <algorithm>
-#include<cmath>
+#include <cmath>
 
 class CombinationLockWindow {
 private:
@@ -39,17 +38,14 @@ private:
     sf::Text clearButtonText;
     
     // Background elements
-    sf::RectangleShape backgroundGradient;
     std::vector<sf::CircleShape> backgroundParticles;
     
     // Timer
     sf::Clock gameClock;
-    sf::Clock blinkClock;
     sf::Clock particleClock;
     
     // Colors
     sf::Color backgroundColor;
-    sf::Color lockColor;
     sf::Color successColor;
     sf::Color failColor;
     
@@ -58,362 +54,312 @@ private:
     LockState currentState;
     
     bool taskCompleted;
-    bool taskFailed;
     bool windowShouldClose;
-    bool showingHint;
-    bool waitingForExit;  // New variable to track if we're waiting for exit confirmation
+    bool waitingForExit;
     int maxDigits;
     int attemptsRemaining;
     int maxAttempts;
 
 public:
-    CombinationLockWindow() : lockWindow(sf::VideoMode(1000, 800), "Welcome to the Last Stage", sf::Style::Close) {
+    CombinationLockWindow()
+    : lockWindow(sf::VideoMode(1000, 800), "Welcome to the Last Stage", sf::Style::Close)
+    {
         initialize();
     }
     
     void initialize() {
-        // Load font
         if (!font.loadFromFile("arial.ttf")) {
-            std::cout << "Error loading arial.ttf" << std::endl;
+            std::cout << "Error loading arial.ttf\n";
         }
         
-        // Setup lock data
-        correctCode = "74526";
-        hintText = "Put all the numbers u got throughout the whole journey";
-        maxDigits = 5;
+        // 6-digit code including '8'
+        correctCode = "745268";
+        hintText    = "Put all the numbers u got throughout the whole journey";
+        maxDigits   = 6;
         maxAttempts = 2;
         attemptsRemaining = maxAttempts;
         
-        // Setup colors
         backgroundColor = sf::Color(15, 15, 25);
-        lockColor = sf::Color(70, 70, 90);
-        successColor = sf::Color(0, 255, 100);
-        failColor = sf::Color(255, 50, 50);
+        successColor    = sf::Color(0, 255, 100);
+        failColor       = sf::Color(255, 50, 50);
         
         setupBackground();
         setupVisualElements();
         setupTexts();
         
-        // Initialize game state
-        currentState = HINT_DISPLAY;
-        taskCompleted = false;
-        taskFailed = false;
+        currentState    = HINT_DISPLAY;
+        taskCompleted   = false;
         windowShouldClose = false;
-        showingHint = true;
-        waitingForExit = false;  // Initialize new variable
-        enteredCode = "";
+        waitingForExit  = false;
+        enteredCode.clear();
         
         gameClock.restart();
         particleClock.restart();
     }
     
     void setupBackground() {
-        // Create animated background particles
         backgroundParticles.clear();
         for (int i = 0; i < 20; i++) {
-            sf::CircleShape particle(2 + rand() % 4);
-            particle.setPosition(rand() % 1000, rand() % 800);
-            particle.setFillColor(sf::Color(100 + rand() % 100, 100 + rand() % 100, 150 + rand() % 100, 100 + rand() % 100));
-            backgroundParticles.push_back(particle);
+            sf::CircleShape p(2 + rand() % 4);
+            p.setPosition(rand() % 1000, rand() % 800);
+            p.setFillColor(sf::Color(
+                100 + rand()%100,
+                100 + rand()%100,
+                150 + rand()%100,
+                100 + rand()%100
+            ));
+            backgroundParticles.push_back(p);
         }
     }
     
     void updateBackground() {
-        // Animate background particles
-        float elapsed = particleClock.restart().asSeconds();
-        for (auto& particle : backgroundParticles) {
-            sf::Vector2f pos = particle.getPosition();
-            pos.x += (30 + rand() % 20) * elapsed;
-            pos.y += sin(pos.x * 0.01f) * 20 * elapsed;
-            
+        float dt = particleClock.restart().asSeconds();
+        for (auto& p : backgroundParticles) {
+            sf::Vector2f pos = p.getPosition();
+            pos.x += (30 + rand()%20) * dt;
+            pos.y += std::sin(pos.x * 0.01f) * 20 * dt;
             if (pos.x > 1020) {
                 pos.x = -20;
                 pos.y = rand() % 800;
             }
-            particle.setPosition(pos);
+            p.setPosition(pos);
         }
     }
     
     void setupVisualElements() {
-        // Main lock frame with enhanced design
-        lockFrame.setSize(sf::Vector2f(450, 550));
-        lockFrame.setPosition(275, 120);
-        lockFrame.setFillColor(sf::Color(40, 40, 60, 200));
+        // Frame
+        lockFrame.setSize({450,550});
+        lockFrame.setPosition(275,120);
+        lockFrame.setFillColor(sf::Color(40,40,60,200));
         lockFrame.setOutlineThickness(6);
-        lockFrame.setOutlineColor(sf::Color(120, 120, 140));
+        lockFrame.setOutlineColor(sf::Color(120,120,140));
         
-        // Lock dial (decorative) - larger and more prominent
+        // Dial
         lockDial.setRadius(90);
-        lockDial.setPosition(405, 180);
-        lockDial.setFillColor(sf::Color(50, 50, 70));
+        lockDial.setPosition(405,180);
+        lockDial.setFillColor(sf::Color(50,50,70));
         lockDial.setOutlineThickness(4);
         lockDial.setOutlineColor(sf::Color::White);
         
-        // Code display area
-        codeDisplay.setSize(sf::Vector2f(350, 60));
-        codeDisplay.setPosition(325, 340);
-        codeDisplay.setFillColor(sf::Color(20, 20, 20));
+        // Code display
+        codeDisplay.setSize({350,60});
+        codeDisplay.setPosition(325,340);
+        codeDisplay.setFillColor(sf::Color(20,20,20));
         codeDisplay.setOutlineThickness(3);
-        codeDisplay.setOutlineColor(sf::Color(0, 255, 0));
+        codeDisplay.setOutlineColor(sf::Color(0,255,0));
         
-        // Digit boxes - 5 boxes for 5 digits
+        // Digit boxes
         digitBoxes.clear();
         digitTexts.clear();
         for (int i = 0; i < maxDigits; i++) {
-            sf::RectangleShape box(sf::Vector2f(55, 45));
-            box.setPosition(345 + i * 65, 350);
-            box.setFillColor(sf::Color(30, 30, 30));
+            sf::RectangleShape box({55,45});
+            box.setPosition(345 + i*65, 350);
+            box.setFillColor(sf::Color(30,30,30));
             box.setOutlineThickness(2);
-            box.setOutlineColor(sf::Color(0, 200, 0));
+            box.setOutlineColor(sf::Color(0,200,0));
             digitBoxes.push_back(box);
             
-            sf::Text digit;
-            digit.setFont(font);
-            digit.setCharacterSize(28);
-            digit.setFillColor(sf::Color(0, 255, 0));
-            digit.setPosition(360 + i * 65, 355);
-            digitTexts.push_back(digit);
+            sf::Text t;
+            t.setFont(font);
+            t.setCharacterSize(28);
+            t.setFillColor(sf::Color(0,255,0));
+            t.setPosition(360 + i*65, 355);
+            digitTexts.push_back(t);
         }
         
-        // Number buttons (1-9, 0) arranged like phone keypad - enhanced design
+        // Number buttons (1–9)
         numberButtons.clear();
         buttonTexts.clear();
-        
-        // Buttons 1-9 in 3x3 grid
         for (int i = 1; i <= 9; i++) {
-            sf::RectangleShape button(sf::Vector2f(70, 55));
-            int row = (i - 1) / 3;
-            int col = (i - 1) % 3;
-            button.setPosition(80 + col * 80, 450 + row * 65);
-            button.setFillColor(sf::Color(60, 80, 100));
-            button.setOutlineThickness(3);
-            button.setOutlineColor(sf::Color(150, 150, 150));
-            numberButtons.push_back(button);
+            sf::RectangleShape btn({70,55});
+            int row = (i-1)/3, col = (i-1)%3;
+            btn.setPosition(80 + col*80, 450 + row*65);
+            btn.setFillColor(sf::Color(60,80,100));
+            btn.setOutlineThickness(3);
+            btn.setOutlineColor(sf::Color(150,150,150));
+            numberButtons.push_back(btn);
             
-            sf::Text buttonText;
-            buttonText.setFont(font);
-            buttonText.setCharacterSize(24);
-            buttonText.setFillColor(sf::Color::White);
-            buttonText.setString(std::to_string(i));
+            sf::Text txt;
+            txt.setFont(font);
+            txt.setCharacterSize(24);
+            txt.setFillColor(sf::Color::White);
+            txt.setString(std::to_string(i));
+            auto b = btn.getGlobalBounds();
+            auto tb = txt.getLocalBounds();
+            txt.setPosition(
+                b.left + b.width/2  - tb.width/2,
+                b.top  + b.height/2 - tb.height/2 - 5
+            );
+            buttonTexts.push_back(txt);
+        }
+        // Button 0
+        {
+            sf::RectangleShape btn({70,55});
+            btn.setPosition(80+80, 645);
+            btn.setFillColor(sf::Color(60,80,100));
+            btn.setOutlineThickness(3);
+            btn.setOutlineColor(sf::Color(150,150,150));
+            numberButtons.push_back(btn);
             
-            sf::FloatRect textBounds = buttonText.getLocalBounds();
-            buttonText.setPosition(80 + col * 80 + 35 - textBounds.width/2, 450 + row * 65 + 27 - textBounds.height/2);
-            buttonTexts.push_back(buttonText);
+            sf::Text txt;
+            txt.setFont(font);
+            txt.setCharacterSize(24);
+            txt.setFillColor(sf::Color::White);
+            txt.setString("0");
+            auto b = btn.getGlobalBounds();
+            auto tb = txt.getLocalBounds();
+            txt.setPosition(
+                b.left + b.width/2  - tb.width/2,
+                b.top  + b.height/2 - tb.height/2 - 5
+            );
+            buttonTexts.push_back(txt);
         }
         
-        // Button 0 at bottom center
-        sf::RectangleShape zeroButton(sf::Vector2f(70, 55));
-        zeroButton.setPosition(80 + 80, 645); // Center position under 8
-        zeroButton.setFillColor(sf::Color(60, 80, 100));
-        zeroButton.setOutlineThickness(3);
-        zeroButton.setOutlineColor(sf::Color(150, 150, 150));
-        numberButtons.push_back(zeroButton);
-        
-        sf::Text zeroText;
-        zeroText.setFont(font);
-        zeroText.setCharacterSize(24);
-        zeroText.setFillColor(sf::Color::White);
-        zeroText.setString("0");
-        
-        sf::FloatRect zeroBounds = zeroText.getLocalBounds();
-        zeroText.setPosition(80 + 80 + 35 - zeroBounds.width/2, 645 + 27 - zeroBounds.height/2);
-        buttonTexts.push_back(zeroText);
-        
-        // Enter button - enhanced design
-        enterButton.setSize(sf::Vector2f(100, 60));
-        enterButton.setPosition(750, 480);
-        enterButton.setFillColor(sf::Color(0, 150, 0));
+        // Control buttons
+        enterButton.setSize({100,60});
+        enterButton.setPosition(750,480);
+        enterButton.setFillColor(sf::Color(0,150,0));
         enterButton.setOutlineThickness(3);
         enterButton.setOutlineColor(sf::Color::White);
         
-        // Clear button - enhanced design
-        clearButton.setSize(sf::Vector2f(100, 60));
-        clearButton.setPosition(750, 560);
-        clearButton.setFillColor(sf::Color(150, 0, 0));
+        clearButton.setSize({100,60});
+        clearButton.setPosition(750,560);
+        clearButton.setFillColor(sf::Color(150,0,0));
         clearButton.setOutlineThickness(3);
         clearButton.setOutlineColor(sf::Color::White);
     }
     
     void setupTexts() {
-        // Title - enhanced
         titleText.setFont(font);
         titleText.setString("Welcome to the Last Stage");
         titleText.setCharacterSize(32);
-        titleText.setFillColor(sf::Color(255, 100, 100));
-        titleText.setPosition(280, 30);
+        titleText.setFillColor(sf::Color(255,100,100));
+        titleText.setPosition(280,30);
         
-        // Hint display - enhanced
         hintDisplayText.setFont(font);
         hintDisplayText.setString("HINT: " + hintText);
         hintDisplayText.setCharacterSize(18);
-        hintDisplayText.setFillColor(sf::Color(255, 255, 100));
-        hintDisplayText.setPosition(50, 150);
+        hintDisplayText.setFillColor(sf::Color(255,255,100));
+        hintDisplayText.setPosition(50,150);
         
-        // Code display
         codeDisplayText.setFont(font);
-        codeDisplayText.setString("Enter 5-digit code:");
+        codeDisplayText.setString("Enter 6-digit code:");
         codeDisplayText.setCharacterSize(20);
         codeDisplayText.setFillColor(sf::Color::White);
-        codeDisplayText.setPosition(380, 315);
+        codeDisplayText.setPosition(380,315);
         
-        // Instructions
         instructionText.setFont(font);
         instructionText.setString("Click numbers to enter code (order doesn't matter)");
         instructionText.setCharacterSize(16);
-        instructionText.setFillColor(sf::Color(100, 255, 255));
-        instructionText.setPosition(50, 420);
+        instructionText.setFillColor(sf::Color(100,255,255));
+        instructionText.setPosition(50,420);
         
-        // Button texts
         enterButtonText.setFont(font);
         enterButtonText.setString("ENTER");
         enterButtonText.setCharacterSize(18);
         enterButtonText.setFillColor(sf::Color::White);
-        enterButtonText.setPosition(775, 500);
+        enterButtonText.setPosition(775,500);
         
         clearButtonText.setFont(font);
         clearButtonText.setString("CLEAR");
         clearButtonText.setCharacterSize(18);
         clearButtonText.setFillColor(sf::Color::White);
-        clearButtonText.setPosition(775, 580);
+        clearButtonText.setPosition(775,580);
         
-        // Attempt text
         attemptText.setFont(font);
         attemptText.setCharacterSize(20);
         attemptText.setFillColor(sf::Color::Yellow);
-        attemptText.setPosition(600, 420);
+        attemptText.setPosition(600,420);
         
-        // Result text
         resultText.setFont(font);
         resultText.setCharacterSize(24);
-        resultText.setPosition(200, 720);
-    }
-    
-    void handleKeyPress(sf::Keyboard::Key key) {
-        // Handle keyboard Enter key for exit
-        if (waitingForExit && key == sf::Keyboard::Enter) {
-            windowShouldClose = true;
-            return;
-        }
+        resultText.setPosition(200,720);
     }
     
     void handleMouseClick(int x, int y) {
         if (currentState == HINT_DISPLAY) {
-            // Click anywhere to start the actual lock challenge
             currentState = PLAYING;
             gameClock.restart();
             return;
         }
-        
         if (currentState != PLAYING) return;
         
-        // Check number buttons
-        for (int i = 0; i < 10; i++) {
-            if (numberButtons[i].getGlobalBounds().contains(x, y)) {
-                if (enteredCode.length() < maxDigits) {
-                    std::string digit;
-                    if (i < 9) {
-                        digit = std::to_string(i + 1); // Buttons 1-9
-                    } else {
-                        digit = "0"; // Button 0 is at index 9
-                    }
-                    enteredCode += digit;
+        for (int i = 0; i < 10; ++i) {
+            if (numberButtons[i].getGlobalBounds().contains(x,y)) {
+                if ((int)enteredCode.size() < maxDigits) {
+                    std::string d = (i < 9 ? std::to_string(i+1) : "0");
+                    enteredCode += d;
                     updateCodeDisplay();
                 }
                 return;
             }
         }
-        
-        // Check enter button
-        if (enterButton.getGlobalBounds().contains(x, y)) {
-            if (enteredCode.length() == maxDigits) {
-                checkCombination();
-            }
+        if (enterButton.getGlobalBounds().contains(x,y)) {
+            if ((int)enteredCode.size() == maxDigits) checkCombination();
             return;
         }
-        
-        // Check clear button
-        if (clearButton.getGlobalBounds().contains(x, y)) {
+        if (clearButton.getGlobalBounds().contains(x,y)) {
             enteredCode.clear();
             updateCodeDisplay();
-            return;
+        }
+    }
+    
+    void handleKeyPress(sf::Keyboard::Key k) {
+        if (waitingForExit && k == sf::Keyboard::Enter) {
+            windowShouldClose = true;
         }
     }
     
     void updateCodeDisplay() {
         for (int i = 0; i < maxDigits; i++) {
-            if (i < enteredCode.length()) {
+            if (i < (int)enteredCode.size())
                 digitTexts[i].setString(std::string(1, enteredCode[i]));
-            } else {
+            else
                 digitTexts[i].setString("_");
-            }
         }
     }
     
-    bool checkDigitsMatch(const std::string& entered, const std::string& correct) {
-        // Check if entered code contains all digits from correct code (order doesn't matter)
-        std::string enteredSorted = entered;
-        std::string correctSorted = correct;
-        std::sort(enteredSorted.begin(), enteredSorted.end());
-        std::sort(correctSorted.begin(), correctSorted.end());
-        return enteredSorted == correctSorted;
+    bool checkDigitsMatch(std::string e, std::string c) {
+        std::sort(e.begin(), e.end());
+        std::sort(c.begin(), c.end());
+        return e == c;
     }
     
     void checkCombination() {
         if (checkDigitsMatch(enteredCode, correctCode)) {
             taskCompleted = true;
             currentState = SUCCESS;
-            waitingForExit = true;  // Enable exit waiting mode
-            resultText.setString("The door is open..Now, Escape hopefully u will study well next time");
+            waitingForExit = true;
+            resultText.setString(
+                "The door is open..Now, Escape hopefully u will study well next time"
+            );
             resultText.setFillColor(successColor);
-            resultText.setPosition(120, 720);
-            
-            // Keep enter button normal since we're using keyboard Enter key
-            
-            // Change lock color to green
             lockFrame.setOutlineColor(successColor);
             lockDial.setOutlineColor(successColor);
             codeDisplay.setOutlineColor(successColor);
-            for (auto& box : digitBoxes) {
-                box.setOutlineColor(successColor);
-            }
+            for (auto &b : digitBoxes) b.setOutlineColor(successColor);
         } else {
             attemptsRemaining--;
             if (attemptsRemaining <= 0) {
-                taskFailed = true;
                 currentState = FAILED;
-                waitingForExit = true;  // Enable exit waiting mode
+                waitingForExit = true;
                 resultText.setString("Task failed try again...");
                 resultText.setFillColor(failColor);
-                resultText.setPosition(300, 720);
-                
-            // Keep enter button normal since we're using keyboard Enter key
-                
-                // Change lock color to red
                 lockFrame.setOutlineColor(failColor);
                 lockDial.setOutlineColor(failColor);
                 codeDisplay.setOutlineColor(failColor);
-                for (auto& box : digitBoxes) {
-                    box.setOutlineColor(failColor);
-                }
+                for (auto &b : digitBoxes) b.setOutlineColor(failColor);
             } else {
-                // Wrong attempt but still have attempts left
-                resultText.setString("Wrong code! " + std::to_string(attemptsRemaining) + " attempt(s) remaining");
+                resultText.setString(
+                    "Wrong code! " + std::to_string(attemptsRemaining) + " attempt(s) remaining"
+                );
                 resultText.setFillColor(sf::Color::Yellow);
-                resultText.setPosition(300, 720);
-                
-                // Flash red briefly
                 lockFrame.setOutlineColor(failColor);
                 lockDial.setOutlineColor(failColor);
                 codeDisplay.setOutlineColor(failColor);
-                for (auto& box : digitBoxes) {
-                    box.setOutlineColor(failColor);
-                }
-                
-                // Clear entered code after wrong attempt
+                for (auto &b : digitBoxes) b.setOutlineColor(failColor);
                 enteredCode.clear();
                 updateCodeDisplay();
-                
-                // Reset to normal colors after 1 second
                 gameClock.restart();
             }
         }
@@ -421,107 +367,77 @@ public:
     
     void update() {
         updateBackground();
-        
         if (currentState == PLAYING) {
-            // Update attempt display
-            attemptText.setString("Attempts: " + std::to_string(attemptsRemaining) + "/" + std::to_string(maxAttempts));
-            
-            // Reset colors after wrong attempt flash
-            if (gameClock.getElapsedTime().asSeconds() > 1.0f && attemptsRemaining > 0 && !taskCompleted) {
-                lockFrame.setOutlineColor(sf::Color(120, 120, 140));
+            attemptText.setString(
+                "Attempts: " + std::to_string(attemptsRemaining) + "/" + std::to_string(maxAttempts)
+            );
+            if (gameClock.getElapsedTime().asSeconds() > 1.0f
+             && attemptsRemaining > 0
+             && currentState == PLAYING)
+            {
+                lockFrame.setOutlineColor(sf::Color(120,120,140));
                 lockDial.setOutlineColor(sf::Color::White);
-                codeDisplay.setOutlineColor(sf::Color(0, 255, 0));
-                for (auto& box : digitBoxes) {
-                    box.setOutlineColor(sf::Color(0, 200, 0));
-                }
+                codeDisplay.setOutlineColor(sf::Color(0,255,0));
+                for (auto &b : digitBoxes) b.setOutlineColor(sf::Color(0,200,0));
                 resultText.setString("");
             }
         }
-        
-        // Removed automatic window closing - now handled by manual exit
     }
     
     void render() {
         lockWindow.clear(backgroundColor);
-        
-        // Draw animated background
-        for (const auto& particle : backgroundParticles) {
-            lockWindow.draw(particle);
-        }
-        
+        for (auto &p : backgroundParticles) lockWindow.draw(p);
         lockWindow.draw(titleText);
         
         if (currentState == HINT_DISPLAY) {
-            // Show hint screen with enhanced design
-            sf::Text hintTitle;
-            hintTitle.setFont(font);
-            hintTitle.setString("FINAL CHALLENGE - SECURITY LOCK");
-            hintTitle.setCharacterSize(36);
-            hintTitle.setFillColor(sf::Color(255, 200, 100));
-            hintTitle.setPosition(200, 250);
+            sf::Text hintTitle("FINAL CHALLENGE - SECURITY LOCK", font, 36);
+            hintTitle.setFillColor(sf::Color(255,200,100));
+            hintTitle.setPosition(200,250);
             lockWindow.draw(hintTitle);
             
-            // Enhanced hint display
-            sf::RectangleShape hintBox(sf::Vector2f(700, 150));
-            hintBox.setPosition(150, 320);
-            hintBox.setFillColor(sf::Color(30, 30, 50, 180));
-            hintBox.setOutlineThickness(3);
-            hintBox.setOutlineColor(sf::Color(100, 200, 255));
-            lockWindow.draw(hintBox);
+            sf::RectangleShape box({700,150});
+            box.setPosition(150,320);
+            box.setFillColor(sf::Color(30,30,50,180));
+            box.setOutlineThickness(3);
+            box.setOutlineColor(sf::Color(100,200,255));
+            lockWindow.draw(box);
             
-            sf::Text wrappedHint;
-            wrappedHint.setFont(font);
-            wrappedHint.setString("HINT:\n" + hintText);
-            wrappedHint.setCharacterSize(20);
-            wrappedHint.setFillColor(sf::Color(150, 255, 150));
-            wrappedHint.setPosition(180, 350);
+            sf::Text wrappedHint("HINT:\n" + hintText, font, 20);
+            wrappedHint.setFillColor(sf::Color(150,255,150));
+            wrappedHint.setPosition(180,350);
             lockWindow.draw(wrappedHint);
             
-            sf::Text clickText;
-            clickText.setFont(font);
-            clickText.setString("Click anywhere to start the challenge");
-            clickText.setCharacterSize(22);
+            sf::Text clickText("Click anywhere to start the challenge", font, 22);
             clickText.setFillColor(sf::Color::White);
-            clickText.setPosition(300, 550);
+            clickText.setPosition(300,550);
             lockWindow.draw(clickText);
             
         } else {
-            // Draw lock interface
             lockWindow.draw(lockFrame);
             lockWindow.draw(lockDial);
             lockWindow.draw(codeDisplay);
             lockWindow.draw(codeDisplayText);
             
-            // Draw digit boxes and digits
             for (int i = 0; i < maxDigits; i++) {
                 lockWindow.draw(digitBoxes[i]);
                 lockWindow.draw(digitTexts[i]);
             }
-            
-            // Draw number buttons
             for (int i = 0; i < 10; i++) {
                 lockWindow.draw(numberButtons[i]);
                 lockWindow.draw(buttonTexts[i]);
             }
-            
-            // Draw control buttons
             lockWindow.draw(enterButton);
             lockWindow.draw(clearButton);
             lockWindow.draw(enterButtonText);
             lockWindow.draw(clearButtonText);
-            
             lockWindow.draw(instructionText);
             lockWindow.draw(attemptText);
             lockWindow.draw(resultText);
             
-            // Show exit instruction when waiting for exit
             if (waitingForExit) {
-                sf::Text exitText;
-                exitText.setFont(font);
-                exitText.setString("Press \"Enter\" key to close the program");
-                exitText.setCharacterSize(18);
-                exitText.setFillColor(sf::Color(255, 255, 100));
-                exitText.setPosition(320, 750);
+                sf::Text exitText("Press \"Enter\" key to close the program", font, 18);
+                exitText.setFillColor(sf::Color(255,255,100));
+                exitText.setPosition(320,750);
                 lockWindow.draw(exitText);
             }
         }
@@ -530,29 +446,26 @@ public:
     }
     
     bool run() {
+        // initialize display
         updateCodeDisplay();
         
         while (lockWindow.isOpen() && !windowShouldClose) {
-            sf::Event event;
-            while (lockWindow.pollEvent(event)) {
-                if (event.type == sf::Event::Closed) {
+            sf::Event e;
+            while (lockWindow.pollEvent(e)) {
+                if (e.type == sf::Event::Closed) {
                     lockWindow.close();
                     return false;
                 }
-                
-                if (event.type == sf::Event::MouseButtonPressed) {
-                    handleMouseClick(event.mouseButton.x, event.mouseButton.y);
+                if (e.type == sf::Event::MouseButtonPressed) {
+                    handleMouseClick(e.mouseButton.x, e.mouseButton.y);
                 }
-                
-                if (event.type == sf::Event::KeyPressed) {
-                    handleKeyPress(event.key.code);
+                if (e.type == sf::Event::KeyPressed) {
+                    handleKeyPress(e.key.code);
                 }
             }
-            
             update();
             render();
         }
-        
         lockWindow.close();
         return taskCompleted;
     }
