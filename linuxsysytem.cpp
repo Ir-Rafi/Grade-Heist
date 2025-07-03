@@ -1,6 +1,14 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <string>
+#include <vector>
+#include <random>
+#include <ctime>
+
+struct WiFiCredentials {
+    std::string username;
+    std::string password;
+};
 
 class LinuxWiFiSystem {
 private:
@@ -42,18 +50,80 @@ private:
     bool usernameActive;
     bool passwordActive;
     bool showError;
+    
+    // Random credentials system
+    std::vector<WiFiCredentials> wifiCredentials;
+    std::mt19937 rng;
+    int currentCredentialIndex;
 
 public:
     LinuxWiFiSystem() : window(sf::VideoMode(900, 700), "Linux WiFi System"), 
                         loginSuccess(false), showWiFiInfo(false),
-                        usernameActive(false), passwordActive(false), showError(false) {
+                        usernameActive(false), passwordActive(false), showError(false),
+                        rng(std::time(nullptr)), currentCredentialIndex(0) {
         
         // Load font
         if (!font.loadFromFile("arial.ttf")) {
             std::cout << "Warning: Could not load arial.ttf, using default font\n";
         }
         
+        generateRandomCredentials();
         setupUI();
+    }
+    
+    void generateRandomCredentials() {
+        // Base usernames and passwords for variety
+        std::vector<std::string> baseUsernames = {
+            "CSEDU_Faculty", "CSEDU_Student", "CSEDU_Staff", "CSEDU_Admin", "CSEDU_Guest",
+            "WiFi_Faculty", "WiFi_Student", "WiFi_Staff", "WiFi_Admin", "WiFi_Guest",
+            "Network_User", "Campus_User", "Secure_User", "Access_User", "Connect_User"
+        };
+        
+        std::vector<std::string> passwordPrefixes = {
+            "CSEDU2024_", "Secure_", "Access_", "Network_", "Campus_",
+            "WiFi_", "Connect_", "Login_", "Pass_", "Key_",
+            "Auth_", "Safe_", "Guard_", "Shield_", "Lock_"
+        };
+        
+        std::vector<std::string> passwordSuffixes = {
+            "Secure!", "Safe#", "Key@", "Pass$", "Auth%",
+            "Net&", "Lock*", "Code+", "Hash=", "Crypt!",
+            "Guard#", "Shield@", "Wall$", "Gate%", "Door&"
+        };
+        
+        // Generate 15 unique credential pairs
+        std::uniform_int_distribution<> userDist(0, baseUsernames.size() - 1);
+        std::uniform_int_distribution<> prefixDist(0, passwordPrefixes.size() - 1);
+        std::uniform_int_distribution<> suffixDist(0, passwordSuffixes.size() - 1);
+        std::uniform_int_distribution<> numDist(1000, 9999);
+        
+        for (int i = 0; i < 15; ++i) {
+            WiFiCredentials cred;
+            
+            // Generate unique username
+            cred.username = baseUsernames[userDist(rng)];
+            if (i > 0) {
+                cred.username += std::to_string(i + 1);
+            }
+            
+            // Generate unique password
+            cred.password = passwordPrefixes[prefixDist(rng)] + 
+                           std::to_string(numDist(rng)) + 
+                           passwordSuffixes[suffixDist(rng)];
+            
+            wifiCredentials.push_back(cred);
+        }
+        
+        // Shuffle the credentials for more randomness
+        std::shuffle(wifiCredentials.begin(), wifiCredentials.end(), rng);
+    }
+    
+    WiFiCredentials getCurrentCredentials() {
+        return wifiCredentials[currentCredentialIndex];
+    }
+    
+    void advanceToNextCredentials() {
+        currentCredentialIndex = (currentCredentialIndex + 1) % wifiCredentials.size();
     }
     
     void setupUI() {
@@ -161,7 +231,6 @@ public:
         
         // WiFi username value
         wifiUsernameValue.setFont(font);
-        wifiUsernameValue.setString("CSEDU_Faculty");
         wifiUsernameValue.setCharacterSize(20);
         wifiUsernameValue.setFillColor(sf::Color::Black);
         wifiUsernameValue.setPosition(190, 245);
@@ -182,7 +251,6 @@ public:
         
         // WiFi password value
         wifiPasswordValue.setFont(font);
-        wifiPasswordValue.setString("CSEDU2024_Secure!");
         wifiPasswordValue.setCharacterSize(20);
         wifiPasswordValue.setFillColor(sf::Color::Black);
         wifiPasswordValue.setPosition(190, 345);
@@ -213,8 +281,9 @@ public:
             if (event.type == sf::Event::KeyPressed) {
                 if (event.key.code == sf::Keyboard::Enter) {
                     if (showWiFiInfo) {
-                        // Exit the task when Enter is pressed on WiFi info screen
-                        window.close();
+                        // Reset for next login and advance to next credentials
+                        advanceToNextCredentials();
+                        resetToLogin();
                     }
                     else if (!loginSuccess) {
                         // Try to login when Enter is pressed on login screen
@@ -287,9 +356,28 @@ public:
             loginSuccess = true;
             showWiFiInfo = true;
             showError = false;
+            
+            // Set the current WiFi credentials
+            WiFiCredentials current = getCurrentCredentials();
+            wifiUsernameValue.setString(current.username);
+            wifiPasswordValue.setString(current.password);
         } else {
             showError = true;
         }
+    }
+    
+    void resetToLogin() {
+        loginSuccess = false;
+        showWiFiInfo = false;
+        showError = false;
+        username.clear();
+        password.clear();
+        usernameActive = false;
+        passwordActive = false;
+        usernameText.setString("");
+        passwordText.setString("");
+        usernameField.setOutlineColor(sf::Color::Black);
+        passwordField.setOutlineColor(sf::Color::Black);
     }
     
     void render() {
