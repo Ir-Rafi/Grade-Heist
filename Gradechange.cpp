@@ -269,7 +269,7 @@ public:
         if (loginUsername == "Admin" && loginPassword == "924689093745") {
             loginSuccess = true;
             currentPhase = GRADE_PHASE;
-            loginResultText.setString("Login Successful!");
+            loginResultText.setString("Login Successful!(8)");
             loginResultText.setFillColor(sf::Color::Green);
         } else {
             loginResultText.setString("Invalid credentials!");
