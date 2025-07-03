@@ -269,7 +269,7 @@ public:
         if (loginUsername == "Admin" && loginPassword == "9246890") {
             loginSuccess = true;
             currentPhase = GRADE_PHASE;
-            loginResultText.setString("Login Successful!(8)");
+            loginResultText.setString("Login Successful!");
             loginResultText.setFillColor(sf::Color::Green);
         } else {
             loginResultText.setString("Invalid credentials!");
@@ -280,7 +280,7 @@ public:
     void submitGradeChange() {
         if (!studentName.empty() && !studentGrade.empty()) {
             gradeChanged = true;
-            submitResultText.setString("Grade Changed - Closing in 2 seconds...");
+            submitResultText.setString("Grade Changed(8) - Closing in 2 seconds...");
             submitResultText.setFillColor(sf::Color::Green);
             shouldClose = true;
             closeClock.restart();
