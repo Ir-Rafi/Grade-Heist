@@ -1,7 +1,6 @@
 // PatrolCircuit.h
 #pragma once
 #include <vector>
-#include "Vec2f.h"
 #include <SFML/Graphics.hpp>
 
 // Returns the default patrol circuit points for the enemy's patrol path
