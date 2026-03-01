@@ -21,8 +21,8 @@ A 2D top-down stealth game built with **C++** and **SFML**. Sneak through a univ
   - **Speed Typing** — Type a randomly generated string
   - **Photocopier** — Drag pages into the copier and wait for printing
   - **Computer Terminal** — Solve math and command-line challenges
-  - **Integer Overflow** — Input a number that triggers a 32-bit overflow
-  - **Combination Lock** — Enter a 4-digit code to crack a safe
+  - **Integer Overflow** — Input a number that exceeds INT32_MAX to trigger an overflow
+  - **Combination Lock** — Enter a 6-digit code to crack a safe
   - **PC Simulator** — Flip a switch to enable/disable a PC
   - **Grade Changer** — Log in and change a student's grade
 - **Minimap** — Toggleable HUD minimap showing player and enemy positions
@@ -138,10 +138,10 @@ cmake --build .
 
 | Key           | Action             |
 |---------------|--------------------|
-| `W` / `↑`     | Move up            |
-| `A` / `←`     | Move left          |
-| `S` / `↓`     | Move down          |
-| `D` / `→`     | Move right         |
+| `↑`           | Move up            |
+| `←`           | Move left          |
+| `↓`           | Move down          |
+| `→`           | Move right         |
 | Mouse click   | Interact with tasks and UI |
 
 ## Architecture

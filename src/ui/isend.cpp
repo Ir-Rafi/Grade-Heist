@@ -25,8 +25,8 @@ bool isend(const std::vector<sf::RectangleShape>& walls,
     bool wallBlocks = false;
 
     // Obstacle check: build a thin AABB "line" between enemy and player
+    sf::FloatRect line = createLineAABB(pos_enemy, pos_player, 2.f);
     for (auto& w : walls) {
-        sf::FloatRect line = createLineAABB(pos_enemy, pos_player, 2.f);
         if (line.intersects(w.getGlobalBounds()))
             wallBlocks = true;
     }
